@@ -32,7 +32,7 @@ fi
 # Vérification de la compatibilité de la carte graphique nvidia
 DETECT=$(nvidia-detect | wc -l)
 LSPCI=$(lspci | grep -E "VGA|3D" | grep NVIDIA | wc -l)
-if [ $DETECT -eq 0 ] || [ $LSPCI -eq 0 ]; then
+if [ $DETECT -eq 1 ] || [ $LSPCI -eq 0 ]; then
 	echo "${RED}Error, your hardware is not compatible for this installation.${NC}" >&2
 	echo "${YELLOW}------------------------- Script exiting... -------------------------${NC}" >&2
 	sleep 2
