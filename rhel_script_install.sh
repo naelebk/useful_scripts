@@ -9,64 +9,97 @@ GREEN='\033[0;32m'
 PURPLE='\033[0;35m'
 RED='\033[0;31m'
 NC='\033[0m'
-ME=$(whoami)
+ME=$LOGNAME
+
+package_manager="dnf"
+extension="rpm"
+
+check_cmd() {
+    if [[ $? -eq 0 ]] || [[ $? -eq 1 ]]; then
+        if [ -z "$1" ]; then 
+            echo -e "${GREEN}OK.${NC}"
+        else 
+            echo -e "${GREEN}OK pour $1.${NC}"
+        fi
+    else
+        if [ -z "$1" ]; then 
+            echo -e "${RED}ERREUR !${NC}"
+        else
+            echo -e "${RED}ERREUR pour $1.${NC}"
+            echo "$1" >> /home/"$ME"/error.log
+        fi
+    fi
+}
+
+updateee() {
+    echo -n "${YELLOW}Update du système..... ${NC}"
+    sudo $package_manager update > /dev/null 2>&1
+    check_cmd ""
+}
+
+install_app() {
+    if ! command -v "$1" > /dev/null 2>&1; then
+        echo -n "${YELLOW}Installation de $1..... ${NC}"
+        "$package_manager" install -y "$1" > /dev/null 2>&1
+        check_cmd $1
+    else
+        echo -e "${GREEN}OK pour $1 : déjà installé.${NC}"
+    fi
+}
+
+install_fl() {
+    if ! command -v "$1" > /dev/null 2>&1; then
+        echo -n "${YELLOW}Installation de $1..... ${NC}"
+        flatpak install -y "$1" > /dev/null 2>&1
+        check_cmd $1
+    else
+        echo -e "${GREEN}OK pour $1 : déjà installé.${NC}"
+    fi
+}
+
 if ! command -v dnf >/dev/null 2>&1; then
 	echo -e "${RED}Le système doit être basé sur RHEL pour exécuter le script.${NC}" 2>&1
 	exit 3
 fi
-if [ "$ME" != "root" ]; then
+if [ "$(whoami)" != "root" ]; then
 	echo -e "${RED}Le script doit être exécuter en tant que superutilisateur (root).${NC}" 
 	exit 4
 fi
-if [ "$ME" = "root" ]; then
-	ME="nael"
-fi
 directory="/home/$ME/Téléchargements"
 cd "$directory"
-
-package_manager="dnf"
-extension="rpm"
 echo -e "${YELLOW}Gestionnaire utilisé : $package_manager${NC}"
 echo -e "${YELLOW}Extension standard : $extension${NC}\n"
 
 # Ajout des dépôts RPM fusion
 echo -e "\n${YELLOW}-----------------------Ajout des dépôts RPM Fusion (free + nonfree)-----------------------${NC}\n"
-$package_manager update
-$package_manager install http://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$("$extension" -E %fedora).noarch.$extension
-$package_manager update
-$package_manager install gstreamer1-libav gstreamer1-vaapi gstreamer1-plugins-{good,good-extras,ugly} -y && $package_manager install gstreamer1-plugins-bad-free gstreamer1-plugins-bad-freeworld -y
-if [ ! -f "$directory/chrome.$extension" ]; then
-    wget "https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.$extension" -O "$directory/chrome.$extension"
-else
-    echo -e "\n${PURPLE}Le fichier $directory/chrome.$extension existe déjà.${NC}\n"
-fi
 
-if [ ! -f "$directory/viv.$extension" ]; then
-    wget "https://downloads.vivaldi.com/stable/vivaldi-stable-6.1.3035.75-1.x86_64.$extension" -O "$directory/viv.$extension"
-else
-    echo -e "\n${PURPLE}Le fichier $directory/viv.$extension existe déjà.${NC}\n"
-fi
-
+updateee
+echo -n "${YELLOW}Récupération du dépôt RPM fusion..... ${NC}"
+$package_manager install http://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$("$extension" -E %fedora).noarch.$extension > /dev/null 2>&1
+check_cmd ""
+updateee
+echo -n "${YELLOW}Installation des dépôts RPM Fusion..... ${NC}"
+$package_manager install gstreamer1-libav gstreamer1-vaapi gstreamer1-plugins-{good,good-extras,ugly} -y > /dev/null 2>&1 && $package_manager install gstreamer1-plugins-bad-free gstreamer1-plugins-bad-freeworld -y > /dev/null 2>&1
+check_cmd "installation dépôts RPM fusion"
+echo -n "${YELLOW}Récupération de google chrome..... ${NC}"
+wget "https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.$extension" -O "$directory/chrome.$extension"  > /dev/null 2>&1
+check_cmd "google-chrome"
+echo -n "${YELLOW}Récupération de vivaldi..... ${NC}"
+wget "https://downloads.vivaldi.com/stable/vivaldi-stable-6.1.3035.75-1.x86_64.$extension" -O "$directory/viv.$extension"  > /dev/null 2>&1
 # Discord sur les systèmes basés sur RedHat, le paquet RPM de Discord n'existe pas
-"$package_manager" install https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$("$extension" -E %fedora).noarch.$extension
-"$package_manager" update
-"$package_manager" install discord
-echo -e "\n${GREEN}Discord installé avec succès !${NC}\n"
-sleep 1
+echo -n "${YELLOW}Récupération de discord..... ${NC}"
+"$package_manager" install https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$("$extension" -E %fedora).noarch.$extension > /dev/null 2>&1
+check_cmd "discord"
+updateee
+echo -n "${YELLOW}Installation de discord..... ${NC}"
+"$package_manager" install discord > /dev/null 2>&1
+check_cmd "installation de discord"
 
 echo -e "\n${YELLOW}-----------------------Installation des fichiers .$extension-----------------------${NC}\n"
 echo "Application non installées :" >> /home/"$ME"/error.log
 for file in "$directory"/*."$extension"; do
     chmod 755 "$file"
-    echo -e "\n${YELLOW}Installation de $file${NC}\n"
-    "$package_manager" install "$file" -y
-    if [ "$?" -eq 0 ]; then
-        echo -e "\n${GREEN}$file installé avec succès !${NC}\n"
-    else
-        echo -e "\n${RED}Erreur lors de l'installation de $file.${NC}\n"
-	echo "$file" >> /home/"$ME"/error.log
-    fi
-    sleep 2
+    install_app $file
 done
 
 rm -f "$directory"/*."$extension"
@@ -80,64 +113,40 @@ echo -e "\n${YELLOW}-----------------------Installation des fichiers avec $packa
 
 # Activation de php8.1
 RHEL_RELEASE=$(cat /etc/redhat-release | cut -d ' ' -f3)
-$package_manager update
-$package_manager install https://rpms.remirepo.net/fedora/remi-release-"$RHEL_RELEASE"."$extension"
-$package_manager module reset php
-$package_manager module install php:remi-8.1
-$package_manager update
+updateee
+echo -n "${YELLOW}Installation de remi repo..... ${NC}"
+$package_manager install https://rpms.remirepo.net/fedora/remi-release-"$RHEL_RELEASE"."$extension" > /dev/null 2>&1
+check_cmd ""
+echo -n "${YELLOW}Module reset php..... ${NC}"
+$package_manager module reset php > /dev/null 2>&1
+check_cmd ""
+echo -n "${YELLOW}Module install php remi..... ${NC}"
+$package_manager module install php:remi-8.1 > /dev/null 2>&1
+check_cmd ""
 yum update
 
 # Applications à installer avec le gestionnaire de paquets défini avant
 applications="epiphany-browser libreoffice texlive-full texmaker obs-studio gnome-tweaks audacity htop neofetch nano openjdk-17-jdk-headless ssh sshfs sshpass gcc gpg vlc timeshift flatpak celluloid kdenlive"
 for app in $applications; do
-    # Vérifier si l'application est déjà installée
-    if ! command -v "$app" >/dev/null 2>&1; then
-        echo -e "\n${YELLOW}Installation de $app${NC}\n"
-        "$package_manager" install "$app"
-        if [ "$?" -eq 0 ]; then
-            echo -e "\n${GREEN}$app installé avec succès !${NC}\n"
-        else
-            echo -e "\n${RED}Erreur lors de l'installation de $app.${NC}\n"
-	        echo "$app" >> /home/"$ME"/error.log
-        fi
-        sleep 2
-    else
-        echo -e "\n${PURPLE}$app est déjà installé.${NC}\n"
-        sleep 2
-    fi
+    install_app $app
 done
 
 echo -e "\n${YELLOW}-----------------------Installation des flatpaks-----------------------${NC}\n"
 
 # Activation des flatpaks
-flatpak remote-delete --force flathub
-flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+echo -n "\n${YELLOW}Activation de Flathub : ${NC}\n" 
+flatpak remote-delete --force flathub > /dev/null > /dev/null 2>&1
+flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo > /dev/null 2>&1
+check_cmd "activation de flathub"
 
 # Applications à installer avec flatpak
 # Evince : lecteur pdf de gnome
 flatpaks="com.github.unrud.VideoDownloader flathub com.spotify.Client VSCodium Zotero evince"
 for fl in $flatpaks; do
-    if [ $(flatpak list | grep -E "$fl" | wc -l) -eq 0 ] ; then
-        echo -e "\n${YELLOW}Installation de $fl${NC}\n"
-        flatpak install flathub "$fl"
-        if [ "$?" -eq 0 ]; then
-            echo -e "\n${GREEN}$fl installé avec succès !${NC}\n"
-        else
-            echo -e "\n${RED}Erreur lors de l'installation de $fl.${NC}\n"
-	        echo "$fl" >> /home/"$ME"/error.log
-        fi
-        sleep 2
-    else
-        echo -e "\n${PURPLE}$fl est déjà installé.${NC}\n"
-        sleep 2
-    fi
+    install_fl $fl
 done
 
 # Nettoyer les dépendances inutiles
-"$package_manager" -y autoremove
-if [ "$?" -eq 0 ]; then
-    echo -e "\n${GREEN}Nettoyage effectué avec succès !${NC}\n"
-    echo -e "\n${GREEN}Terminaison du script avec un code de retour de 0.${NC}\n"
-else
-    echo -e "\n${RED}Erreurs à certains endroits, code de retour : $?.${NC}\n" 
-fi
+echo -n "${YELLOW}Nettoyage du système ($package_manager autoremove) : ${NC}"
+sudo "$package_manager" -y autoremove > /dev/null 2>&1
+check_cmd ""
