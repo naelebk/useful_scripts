@@ -22,7 +22,7 @@ check_cmd() {
             echo -e "${GREEN}OK pour $1.${NC}"
         fi
     else
-        if [ -z "$1" ]; then 
+        if [[ -z "$1" ]]; then 
             echo -e "${RED}ERREUR !${NC}"
         else
             echo -e "${RED}ERREUR pour $1.${NC}"
@@ -61,7 +61,7 @@ if ! command -v dnf >/dev/null 2>&1; then
 	echo -e "${RED}Le système doit être basé sur RHEL pour exécuter le script.${NC}" 2>&1
 	exit 3
 fi
-if [ "$(whoami)" != "root" ]; then
+if [[ "$(whoami)" != "root" ]]; then
 	echo -e "${RED}Le script doit être exécuter en tant que superutilisateur (root).${NC}" 
 	exit 4
 fi
@@ -103,7 +103,7 @@ for file in "$directory"/*."$extension"; do
 done
 
 rm -f "$directory"/*."$extension"
-if [ "$?" -eq 0 ]; then
+if [[ "$?" -eq 0 ]]; then
     echo -e "\n${GREEN}Fichiers .$extension supprimés avec succès !${NC}\n"
 else
     echo -e "\n${RED}Erreur lors de la suppression de certains fichiers .$extension.${NC}\n" 
