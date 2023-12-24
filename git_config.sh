@@ -28,7 +28,7 @@ check_cmd() {
 install_app() {
     if ! command -v "$1" > /dev/null 2>&1; then
         echo -ne "${YELLOW}Installation de $1..... ${NC}"
-        "$package_manager" install -y "$1" > /dev/null 2>&1
+        $2 install -y "$1" > /dev/null 2>&1
         check_cmd $1
     else
         echo -e "${GREEN}OK pour $1 : déjà installé.${NC}"
@@ -45,8 +45,7 @@ if [[ "$#" -ne 2 ]]; then
     exit 1
 fi
 email="$1"
-$package_manager="$2"
-install_app "git"
+install_app "git" $2
 echo -ne "${YELLOW}Configuration de git avec $email.....${NC} "
 sudo -u "$ME" git config --global user.email "$email"
 check_cmd ""
