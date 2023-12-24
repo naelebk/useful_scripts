@@ -32,14 +32,14 @@ check_cmd() {
 }
 
 updateee() {
-    echo -n "${YELLOW}Update du système..... ${NC}"
+    echo -ne "${YELLOW}Update du système..... ${NC}"
     sudo $package_manager update > /dev/null 2>&1
     check_cmd ""
 }
 
 install_app() {
     if ! command -v "$1" > /dev/null 2>&1; then
-        echo -n "${YELLOW}Installation de $1..... ${NC}"
+        echo -ne "${YELLOW}Installation de $1..... ${NC}"
         "$package_manager" install -y "$1" > /dev/null 2>&1
         check_cmd $1
     else
@@ -49,7 +49,7 @@ install_app() {
 
 install_fl() {
     if ! command -v "$1" > /dev/null 2>&1; then
-        echo -n "${YELLOW}Installation de $1..... ${NC}"
+        echo -ne "${YELLOW}Installation de $1..... ${NC}"
         flatpak install -y "$1" > /dev/null 2>&1
         check_cmd $1
     else
@@ -74,24 +74,24 @@ echo -e "${YELLOW}Extension standard : $extension${NC}\n"
 echo -e "\n${YELLOW}-----------------------Ajout des dépôts RPM Fusion (free + nonfree)-----------------------${NC}\n"
 
 updateee
-echo -n "${YELLOW}Récupération du dépôt RPM fusion..... ${NC}"
+echo -ne "${YELLOW}Récupération du dépôt RPM fusion..... ${NC}"
 $package_manager install http://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$("$extension" -E %fedora).noarch.$extension > /dev/null 2>&1
 check_cmd ""
 updateee
-echo -n "${YELLOW}Installation des dépôts RPM Fusion..... ${NC}"
+echo -ne "${YELLOW}Installation des dépôts RPM Fusion..... ${NC}"
 $package_manager install gstreamer1-libav gstreamer1-vaapi gstreamer1-plugins-{good,good-extras,ugly} -y > /dev/null 2>&1 && $package_manager install gstreamer1-plugins-bad-free gstreamer1-plugins-bad-freeworld -y > /dev/null 2>&1
 check_cmd "installation dépôts RPM fusion"
-echo -n "${YELLOW}Récupération de google chrome..... ${NC}"
+echo -ne "${YELLOW}Récupération de google chrome..... ${NC}"
 wget "https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.$extension" -O "$directory/chrome.$extension"  > /dev/null 2>&1
 check_cmd "google-chrome"
-echo -n "${YELLOW}Récupération de vivaldi..... ${NC}"
+echo -ne "${YELLOW}Récupération de vivaldi..... ${NC}"
 wget "https://downloads.vivaldi.com/stable/vivaldi-stable-6.1.3035.75-1.x86_64.$extension" -O "$directory/viv.$extension"  > /dev/null 2>&1
 # Discord sur les systèmes basés sur RedHat, le paquet RPM de Discord n'existe pas
-echo -n "${YELLOW}Récupération de discord..... ${NC}"
+echo -ne "${YELLOW}Récupération de discord..... ${NC}"
 "$package_manager" install https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$("$extension" -E %fedora).noarch.$extension > /dev/null 2>&1
 check_cmd "discord"
 updateee
-echo -n "${YELLOW}Installation de discord..... ${NC}"
+echo -ne "${YELLOW}Installation de discord..... ${NC}"
 "$package_manager" install discord > /dev/null 2>&1
 check_cmd "installation de discord"
 
@@ -114,13 +114,13 @@ echo -e "\n${YELLOW}-----------------------Installation des fichiers avec $packa
 # Activation de php8.1
 RHEL_RELEASE=$(cat /etc/redhat-release | cut -d ' ' -f3)
 updateee
-echo -n "${YELLOW}Installation de remi repo..... ${NC}"
+echo -ne "${YELLOW}Installation de remi repo..... ${NC}"
 $package_manager install https://rpms.remirepo.net/fedora/remi-release-"$RHEL_RELEASE"."$extension" > /dev/null 2>&1
 check_cmd ""
-echo -n "${YELLOW}Module reset php..... ${NC}"
+echo -ne "${YELLOW}Module reset php..... ${NC}"
 $package_manager module reset php > /dev/null 2>&1
 check_cmd ""
-echo -n "${YELLOW}Module install php remi..... ${NC}"
+echo -ne "${YELLOW}Module install php remi..... ${NC}"
 $package_manager module install php:remi-8.1 > /dev/null 2>&1
 check_cmd ""
 yum update
@@ -134,7 +134,7 @@ done
 echo -e "\n${YELLOW}-----------------------Installation des flatpaks-----------------------${NC}\n"
 
 # Activation des flatpaks
-echo -n "\n${YELLOW}Activation de Flathub : ${NC}\n" 
+echo -ne "\n${YELLOW}Activation de Flathub : ${NC}\n" 
 flatpak remote-delete --force flathub > /dev/null > /dev/null 2>&1
 flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo > /dev/null 2>&1
 check_cmd "activation de flathub"
@@ -147,6 +147,6 @@ for fl in $flatpaks; do
 done
 
 # Nettoyer les dépendances inutiles
-echo -n "${YELLOW}Nettoyage du système ($package_manager autoremove) : ${NC}"
+echo -ne "${YELLOW}Nettoyage du système ($package_manager autoremove) : ${NC}"
 sudo "$package_manager" -y autoremove > /dev/null 2>&1
 check_cmd ""
