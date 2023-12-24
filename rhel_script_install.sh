@@ -37,7 +37,7 @@ check_cmd() {
 
 updateee() {
     echo -ne "${YELLOW}Update du système..... ${NC}"
-    sudo $package_manager update > /dev/null 2>&1
+    sudo $1 update > /dev/null 2>&1
     check_cmd ""
 }
 

@@ -24,6 +24,12 @@ check_cmd() {
     fi
 }
 
+updateee() {
+    echo -ne "${YELLOW}Update du système..... ${NC}"
+    sudo $1 update > /dev/null 2>&1
+    check_cmd ""
+}
+
 
 if [[ "$#" -ne 3 ]]; then
     echo -e "${RED}Synopsis : $0 PACKAGE_MANAGER EXTENSION EMAIL_ADRESS${NC}"
@@ -63,6 +69,7 @@ elif [[ "$1" = "dnf" ]]; then
     ./rhel_script_install.sh $1 $2
 fi
 ./git_config.sh $3 $1
+updateee $package_manager
 echo -ne "${YELLOW}Pilotes nvidia ?${NC} "
 read bs
 echo -ne "${PURPLE}Êtes vous sûr ? (Oui/Non)${NC} "

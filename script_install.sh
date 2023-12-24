@@ -126,7 +126,7 @@ check_cmd "activation de flathub"
 # Application à installer avec flatpak
 # Evince : lecteur pdf de gnome
 echo -n "\n${YELLOW}Installation des flatpaks : ${NC}\n"
-flatpaks="com.github.unrud.VideoDownloader flathub com.spotify.Client kdenlive VSCodium onlyoffice Zotero evince"
+flatpaks="com.github.unrud.VideoDownloader flathub com.spotify.Client VSCodium onlyoffice Zotero evince"
 for fl in $flatpaks; do
     install_fl $fl
 done
