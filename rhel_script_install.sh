@@ -126,7 +126,7 @@ check_cmd ""
 yum update
 
 # Applications à installer avec le gestionnaire de paquets défini avant
-applications="epiphany-browser libreoffice texlive-full texmaker obs-studio gnome-tweaks audacity htop neofetch nano openjdk-17-jdk-headless ssh sshfs sshpass gcc gpg vlc timeshift flatpak celluloid kdenlive"
+applications="gnome-tweaks libreoffice texlive-full texmaker obs-studio audacity htop neofetch nano openjdk-17-jdk-headless ssh sshfs sshpass gcc valgrind clang g++ cmake nodejs racket npm gpg php8.1 vlc timeshift flatpak python3 python3-pip python3.11-venv celluloid virt-manager git apache2 php libapache2-mod-php mariadb-server php-mysql php-curl php-gd php-intl php-json php-mbstring php-xml php-zip php-bcmath"
 for app in $applications; do
     install_app $app
 done
