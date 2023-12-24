@@ -53,6 +53,6 @@ echo -ne "${YELLOW}Génération clé SSH avec $email.....${NC} "
 sudo -u "$ME" ssh-keygen -t rsa -b 4096 -C "$email"
 check_cmd ""
 cat "/home/$ME/.ssh/id_rsa.pub"
-echo -n "Une fois la clé ssh copiée dans votre compte github, appuyez sur la touche ENTRÉE"
+echo -ne "${PURPLE}Une fois la clé ssh copiée dans votre compte github, appuyez sur la touche ENTRÉE${NC}"
 read reponse
 
