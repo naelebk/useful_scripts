@@ -67,6 +67,10 @@ fi
 
 package_manager="apt"
 extension="deb"
+if [ "$#" -eq 2 ]; then
+    package_manager="$1"
+    extension="$2"
+fi
 echo "${YELLOW}Gestionnaire utilisé : ${NC}${GREEN}$package_manager${NC}"
 echo "${YELLOW}Extension standard : ${NC}${GREEN}$extension${NC}\n"
 echo -n "${YELLOW}Récupération de google chrome..... ${NC}"

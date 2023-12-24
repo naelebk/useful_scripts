@@ -13,6 +13,10 @@ ME=$LOGNAME
 
 package_manager="dnf"
 extension="rpm"
+if [ "$#" -eq 2 ]; then
+    package_manager="$1"
+    extension="$2"
+fi
 
 check_cmd() {
     if [[ $? -eq 0 ]] || [[ $? -eq 1 ]]; then
