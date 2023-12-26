@@ -1,0 +1,12 @@
+*.aux
+*.bcf
+*.log
+*.out
+*.pytxcode
+Makefile
+*.run.xml
+*.synctex.gz
+*.tex
+*.toc
+disques.jpg
+pas_disques.jpg
