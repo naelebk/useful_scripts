@@ -6,7 +6,7 @@ PURPLE='\033[0;35m'
 RED='\033[0;31m'
 NC='\033[0m'
 OUT=scripts.zip
-REP_SCRIPTS="useful_scripts-main"
+REP="ventoy-1.0.96"
 
 check_cmd() {
     if [[ $? -eq 0 ]] || [[ $? -eq 1 ]]; then
