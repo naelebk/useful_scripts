@@ -116,7 +116,7 @@ for app in $applications; do
     install_app $app
 done
 echo -n "${YELLOW}Installation de r7rs-lib (pour racket)..... ${NC}"
-sudo -u "$MOI" raco pkg install r7rs-lib > /dev/null 2>&1
+sudo -u "$ME" raco pkg install r7rs-lib > /dev/null 2>&1
 check_cmd "r7rs-lib"
 #Activation des flatpaks
 echo -n "\n${YELLOW}Activation de Flathub : ${NC}\n" 
