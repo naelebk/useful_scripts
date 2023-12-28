@@ -108,51 +108,32 @@ sudo sh ./Ventoy2Disk.sh -i $cle2
 echo -ne "${YELLOW}Montage de $cle dans /media/$ME..... ${NC}"
 mount $cle /media/"$ME"
 check_cmd ""
+MEDIA_AMOVIBLE=""
 if [[ -d "/media/$ME/Ventoy" ]]; then
-    cd ..
-    for file in "./$ISO"; do
-        echo -ne "${YELLOW}Copie de $(basename $file) dans /media/$ME/Ventoy/..... ${NC}" 
-        cp $file "/media/$ME/Ventoy"
-        check_cmd "$(basename $file)"
-    done
-    echo -ne "${YELLOW}Récupération des pilotes RST Floppy pour détection des disques (préventif)..... ${NC}"
-    sudo -u "$ME" curl -o "$PILOTS" https://downloadmirror.intel.com/771904/RST_F6_Floppy-Win10_Win11-18.6.1.1016.1.zip
-    check_cmd ""
-    echo -ne "${YELLOW}Copie des pilotes dans /media/$ME/Ventoy..... ${NC}"
-    sleep 1
-    cp $PILOTS "/media/$ME/Ventoy"
-    check_cmd ""
-    echo -ne "${YELLOW}Accès à au média amovible (/media/$ME/Ventoy)..... ${NC}"
-    sleep 1
-    cd "/media/$ME/Ventoy"
-    check_cmd ""
-    echo -ne "${YELLOW}Dézippage de $PILOTS dans /media/$ME/Ventoy..... ${NC}"
-    sleep 1
-    unzip $PILOTS
-    check_cmd "dézippage"
-
+    MEDIA_AMOVIBLE="/media/$ME/Ventoy"
 else
-    cd ..
-    for file in "./$ISO"; do
-        echo -ne "${YELLOW}Copie de $(basename $file) dans /media/$ME/ (pas Ventoy, car pas monté actuellement)..... ${NC}" 
-        cp $file "/media/$ME"
-        check_cmd "$(basename $file)"
-    done
-    echo -ne "${YELLOW}Récupération des pilotes RST Floppy pour détection des disques (préventif)..... ${NC}"
-    sudo -u "$ME" curl -o "$PILOTS" https://downloadmirror.intel.com/771904/RST_F6_Floppy-Win10_Win11-18.6.1.1016.1.zip
-    check_cmd ""
-    echo -ne "${YELLOW}Copie des pilotes dans /media/$ME..... ${NC}"
-    sleep 1
-    cp $PILOTS "/media/$ME"
-    check_cmd ""
-    echo -ne "${YELLOW}Accès à au média amovible (/media/$ME)..... ${NC}"
-    sleep 1
-    cd "/media/$ME"
-    check_cmd ""
-    echo -ne "${YELLOW}Dézippage de $PILOTS dans /media/$ME..... ${NC}"
-    sleep 1
-    unzip $PILOTS
-    check_cmd "dézippage"
+    MEDIA_AMOVIBLE="/media/$ME"
 fi
+cd ..
+for file in "./$ISO"; do
+    echo -ne "${YELLOW}Copie de $(basename $file) dans $MEDIA_AMOVIBLE..... ${NC}" 
+    cp $file $MEDIA_AMOVIBLE
+    check_cmd "$(basename $file)"
+done
+echo -ne "${YELLOW}Récupération des pilotes RST Floppy pour détection des disques (préventif)..... ${NC}"
+sudo -u "$ME" curl -o "$PILOTS" https://downloadmirror.intel.com/771904/RST_F6_Floppy-Win10_Win11-18.6.1.1016.1.zip
+check_cmd ""
+echo -ne "${YELLOW}Copie des pilotes dans $MEDIA_AMOVIBLE..... ${NC}"
+sleep 1
+cp $PILOTS $MEDIA_AMOVIBLE
+check_cmd ""
+echo -ne "${YELLOW}Accès à au média amovible ($MEDIA_AMOVIBLE)..... ${NC}"
+sleep 1
+cd $MEDIA_AMOVIBLE
+check_cmd ""
+echo -ne "${YELLOW}Dézippage de $PILOTS dans $MEDIA_AMOVIBLE..... ${NC}"
+sleep 1
+unzip $PILOTS
+check_cmd "dézippage"
 echo -ne "${YELLOW}Dernières vérifications..... ${NC}"
 check_cmd "tout, fin du script"
