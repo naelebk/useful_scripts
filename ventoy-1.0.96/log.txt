@@ -1,0 +1,87 @@
+############# Ventoy2Disk -i /dev/sdb [x86_64] ################
+mer. 27 déc. 2023 23:54:26 CET
+decompress tools
+MODE=install FORCE= RESERVE_SPACE= RESERVE_SIZE_MB=0
+hexdump test ok ...
+mkexfatfs test ok ...
+vtoycli fat test ok ...
+tool check success ...
+check tool work ok
+root permission check ok ...
+install Ventoy ...
+Ventoy version in /dev/sdb2 is 1.0.96
+[2023/11/28 00:14:48] 
+[2023/11/28 00:14:48] =========================================================
+[2023/11/28 00:14:48] =========================================================
+[2023/11/28 00:14:48] =============== VentoyGui x86_64 ===============
+[2023/11/28 00:14:48] =========================================================
+[2023/11/28 00:14:48] =========================================================
+[2023/11/28 00:14:48] log file is <log.txt>
+[2023/11/28 00:14:48] pid:10301 ppid:4816 uid:0 euid:0
+[2023/11/28 00:14:48] adjust dir:1  current path:/home/nael/Documents/useful_scripts/ventoy-1.0.96
+[2023/11/28 00:14:48] =========RAW ARGS BEGIN===========
+[2023/11/28 00:14:48] argv[0]=<./VentoyGUI.x86_64>
+[2023/11/28 00:14:48] =========RAW ARGS END===========
+[2023/11/28 00:14:48] uname -m <x86_64> 64bit
+[2023/11/28 00:14:48] Build bit is 64 (x86_64)
+[2023/11/28 00:14:48] Now detect the GUI type ...
+[2023/11/28 00:14:48] 1451 libs found in cache format 1
+[2023/11/28 00:14:48] LIB:<libgtk-4.so.1>
+[2023/11/28 00:14:48] LIB:<libgtk-3.so.0>
+[2023/11/28 00:14:48] LIB:<libgtk-x11-2.0.so.0>
+[2023/11/28 00:14:48] LIB:<libQt5X11Extras.so.5>
+[2023/11/28 00:14:48] ldconfig lib flags 0x17
+[2023/11/28 00:14:48] lib flags GLADE2:[NO] GTK2:[YES] GTK3:[YES] GTK4:[YES] QT4:[NO] QT5:[YES] QT6:[NO]
+[2023/11/28 00:14:48] distro_check_gui_env ...
+[2023/11/28 00:14:48] Key arch is not found in json data.
+[2023/11/28 00:14:48] check <env> <DESKTOP_SESSION> <equal>
+[2023/11/28 00:14:48] Key arch is not found in json data.
+[2023/11/28 00:14:48] check <env> <DESKTOP_SESSION> <equal>
+[2023/11/28 00:14:48] Key arch is not found in json data.
+[2023/11/28 00:14:48] check <env> <DESKTOP_SESSION> <equal>
+[2023/11/28 00:14:48] Can not distinguish GTK and QT, default use GTK.
+[2023/11/28 00:14:48] This is gtk3 X environment.
+[2023/11/28 00:14:48] exe = /home/nael/Documents/useful_scripts/ventoy-1.0.96/tool/x86_64/Ventoy2Disk.gtk3
+[2023/11/28 00:14:48] execute permission check success.
+[2023/11/28 00:14:48] We have root privileges, just exec /home/nael/Documents/useful_scripts/ventoy-1.0.96/tool/x86_64/Ventoy2Disk.gtk3
+[2023/11/28 00:14:48] ================================================
+[2023/11/28 00:14:48] ===== Ventoy2Disk 1.0.96 powered by GTK3.x =====
+[2023/11/28 00:14:48] ================================================
+[2023/11/28 00:14:48] log file is <log.txt> lastsize:2487
+[2023/11/28 00:14:48] ini file is <./Ventoy2Disk.ini>
+[2023/11/28 00:14:48] ventoy_disk_enumerate_all
+[2023/11/28 00:14:48] get disk info nvme0n1
+[2023/11/28 00:14:48] is 4k native disk <nvme0n1> <0>
+[2023/11/28 00:14:48] get disk size from sysfs for nvme0n1
+[2023/11/28 00:14:48] /sys/block/nvme0n1/device/vendor not exist 
+[2023/11/28 00:14:48] ventoy_get_vtoy_data /dev/nvme0n1
+[2023/11/28 00:14:48] Invalid efi part2 name <Microsoft reserved partition>
+[2023/11/28 00:14:48] disk:</dev/nvme0n1 259:0> model:< KINGSTON SNVS500G (nvme)> size:500107862016 (512 GB)
+[2023/11/28 00:14:48] /dev/nvme0n1 NO Ventoy detected
+[2023/11/28 00:14:48] get disk info sdc
+[2023/11/28 00:14:48] is 4k native disk <sdc> <0>
+[2023/11/28 00:14:48] get disk size from sysfs for sdc
+[2023/11/28 00:14:48] ventoy_get_vtoy_data /dev/sdc
+[2023/11/28 00:14:48] ventoy partition layout check OK: [2048 3906961584] [3906963632 65536]
+[2023/11/28 00:14:48] now check secure boot for /dev/sdc ...
+[2023/11/28 00:14:48] /EFI/BOOT/grubx64_real.efi find, secure boot in enabled
+[2023/11/28 00:14:48] disk:</dev/sdc 8:32> model:<TOSHIBA EXTERNAL_USB (USB)> size:2000398934016 (2048 GB)
+[2023/11/28 00:14:48] /dev/sdc Ventoy:<1.0.96> MBR secureboot:1 preserve:0
+[2023/11/28 00:14:48] get disk info sda
+[2023/11/28 00:14:48] is 4k native disk <sda> <0>
+[2023/11/28 00:14:48] get disk size from sysfs for sda
+[2023/11/28 00:14:48] ventoy_get_vtoy_data /dev/sda
+[2023/11/28 00:14:48] NO ventoy efi part layout <2048 0>
+[2023/11/28 00:14:48] disk:</dev/sda 8:0> model:<ATA ST1000LM035-1RK1 (scsi)> size:1000204886016 (1024 GB)
+[2023/11/28 00:14:48] /dev/sda NO Ventoy detected
+[2023/11/28 00:14:48] ============= DISK DUMP ============
+[2023/11/28 00:14:48] /dev/sdc [2048 GB] TOSHIBA EXTERNAL_USB (USB)	Ventoy: 1.0.96 MBR secureboot:1 preserve:0
+[2023/11/28 00:14:48] /dev/nvme0n1 [512 GB]  KINGSTON SNVS500G (nvme)	Ventoy: NA
+[2023/11/28 00:14:48] /dev/sda [1024 GB] ATA ST1000LM035-1RK1 (scsi)	Ventoy: NA
+[2023/11/28 00:14:48] on_init_window ...
+[2023/11/28 00:14:48] load_languages ...
+[2023/11/28 00:14:48] current language <English (English)>
+[2023/11/28 00:14:48] fill_dev_list total disk: 3 showall:0
+[2023/11/28 00:14:48] combox count:1, active:sdc id:0
+[2023/11/28 00:15:33] on_exit_window ...
+[2023/11/28 00:15:33] ######## Ventoy2Disk GTK 1.0.96 exit ########
