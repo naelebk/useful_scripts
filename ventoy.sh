@@ -10,8 +10,10 @@ PURPLE='\033[0;35m'
 RED='\033[0;31m'
 NC='\033[0m'
 OUT="VENTOY.tar.gz"
-REP="ventoy-1.0.96"
-ISO="windows.iso"
+VERSION="1.0.96"
+REP="ventoy-$VERSION"
+ISO="*.iso"
+PILOTS="PILOTS.zip"
 check_cmd() {
     if [[ $? -eq 0 ]] || [[ $? -eq 1 ]]; then
         if [ -z "$1" ]; then 
@@ -32,6 +34,10 @@ if [[ "$(whoami)" != "root" ]]; then
 	echo -e "${RED}Le script doit être exécuter en tant que superutilisateur (root).${NC}" 
 	exit 4
 fi
+if [[ "$(ls $ISO | wc -l)" -eq 0 ]]; then
+    echo -e "${RED}Erreur, une image ISO au moins doit être présente dans ce répertoire pour exécuter le script !${NC}"
+    exit 5
+fi
 while [[ -f $OUT ]]; do
     echo -ne "${YELLOW}Suppression de $OUT car déjà existant..... ${NC}"
     sleep 1
@@ -44,16 +50,8 @@ while [[ -d $REP ]]; do
     rm -rf $REP
     check_cmd ""
 done
-echo -ne "${YELLOW}Vérification d'une image iso déjà présente dans le répertoire..... ${NC}"
-nb=$(ls *.iso | grep "[wW][iI][nN]" | wc -l)
-sleep 1
-if [[ $nb -eq 0 ]]; then
-    echo -e "${RED}KO => aucune image iso !${NC}"
-else
-    echo -e "${GREEN}OK.${NC}"
-fi
 echo -e "${YELLOW}Récupération des scripts pour installation (out : $OUT)..... ${NC}"
-sudo -u "$ME" curl -LJ -o $OUT https://github.com/ventoy/Ventoy/releases/download/v1.0.96/ventoy-1.0.96-linux.tar.gz
+sudo -u "$ME" curl -LJ -o $OUT "https://github.com/ventoy/Ventoy/releases/download/v$VERSION/ventoy-$VERSION-linux.tar.gz"
 check_cmd ""
 echo -ne "${YELLOW}Permissions sur le zip..... ${NC}"
 sleep 1
@@ -67,24 +65,6 @@ echo -ne "${YELLOW}Permissions du répertoire $REP..... ${NC}"
 sleep 1
 sudo -u "$ME" chmod -R 755 $REP/*
 check_cmd ""
-if [[ $nb -eq 0 ]]; then
-    while true; do
-        echo -ne "${YELLOW}Quelle version de Windows : 10/11 (tapez juste le numéro de version) ?\n\t=> ${NC}"
-        read version
-        if [[ "$version" -ne 10 ]] && [[ "$version" -ne 11 ]]; then
-            echo -e "{$RED}KO => la version de Windows doit être 10 ou 11 (tapez juste \"10\" ou \"11\")${NC}"
-        else
-            echo -e "${YELLOW}Téléchargement de l'image iso de Windows $version ($ISO)..... ${NC}"
-            if [[ "$version" -eq 11 ]]; then
-                sudo -u "$ME" curl -o "$ISO" "https://software.download.prss.microsoft.com/dbazure/Win11_23H2_French_x64v2.iso?t=fd669ec5-2960-4af4-85c4-d46d58d2a258&e=1703700608&h=37b1c443ac637f7e2f2da032c08ecf37769267f60ed7876f6ef630b552445908"
-            elif [[ "$version" -eq 10 ]]; then
-                sudo -u "$ME" curl -o "$ISO" "https://software.download.prss.microsoft.com/dbazure/Win10_22H2_French_x64v1.iso?t=6b62c234-6b59-4359-bed5-aa2dbd9f2664&e=1703684845&h=3486653607b1123722cd21f78b668479f9b67bd3e81ec80d7367e95b3b2d2eb8"
-            fi
-            check_cmd ""
-            break
-        fi
-    done
-fi
 echo -ne "${YELLOW}Accès au répertoire $REP..... ${NC}"
 sleep 1
 cd $REP
@@ -129,11 +109,50 @@ echo -ne "${YELLOW}Montage de $cle dans /media/$ME..... ${NC}"
 mount $cle /media/"$ME"
 check_cmd ""
 if [[ -d "/media/$ME/Ventoy" ]]; then
-    echo -ne "${YELLOW}Copie de $ISO dans /media/$ME/Ventoy..... ${NC}"
-    cp ../"$ISO" "/media/$ME/Ventoy"
+    cd ..
+    for file in "./$ISO"; do
+        echo -ne "${YELLOW}Copie de $(basename $file) dans /media/$ME/Ventoy/..... ${NC}" 
+        cp $file "/media/$ME/Ventoy"
+        check_cmd "$(basename $file)"
+    done
+    echo -ne "${YELLOW}Récupération des pilotes RST Floppy pour détection des disques (préventif)..... ${NC}"
+    sudo -u "$ME" curl -o "$PILOTS" https://downloadmirror.intel.com/771904/RST_F6_Floppy-Win10_Win11-18.6.1.1016.1.zip
     check_cmd ""
+    echo -ne "${YELLOW}Copie des pilotes dans /media/$ME/Ventoy..... ${NC}"
+    sleep 1
+    cp $PILOTS "/media/$ME/Ventoy"
+    check_cmd ""
+    echo -ne "${YELLOW}Accès à au média amovible (/media/$ME/Ventoy)..... ${NC}"
+    sleep 1
+    cd "/media/$ME/Ventoy"
+    check_cmd ""
+    echo -ne "${YELLOW}Dézippage de $PILOTS dans /media/$ME/Ventoy..... ${NC}"
+    sleep 1
+    unzip $PILOTS
+    check_cmd "dézippage"
+
 else
-    echo -ne "${YELLOW}Copie de $ISO dans /media/$ME (pas Ventoy, car seul media amovible monté actuellement)..... ${NC}"
-    cp ../"$ISO" "/media/$ME"
+    cd ..
+    for file in "./$ISO"; do
+        echo -ne "${YELLOW}Copie de $(basename $file) dans /media/$ME/ (pas Ventoy, car pas monté actuellement)..... ${NC}" 
+        cp $file "/media/$ME"
+        check_cmd "$(basename $file)"
+    done
+    echo -ne "${YELLOW}Récupération des pilotes RST Floppy pour détection des disques (préventif)..... ${NC}"
+    sudo -u "$ME" curl -o "$PILOTS" https://downloadmirror.intel.com/771904/RST_F6_Floppy-Win10_Win11-18.6.1.1016.1.zip
     check_cmd ""
+    echo -ne "${YELLOW}Copie des pilotes dans /media/$ME..... ${NC}"
+    sleep 1
+    cp $PILOTS "/media/$ME"
+    check_cmd ""
+    echo -ne "${YELLOW}Accès à au média amovible (/media/$ME)..... ${NC}"
+    sleep 1
+    cd "/media/$ME"
+    check_cmd ""
+    echo -ne "${YELLOW}Dézippage de $PILOTS dans /media/$ME..... ${NC}"
+    sleep 1
+    unzip $PILOTS
+    check_cmd "dézippage"
 fi
+echo -ne "${YELLOW}Dernières vérifications..... ${NC}"
+check_cmd "tout, fin du script"
