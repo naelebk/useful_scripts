@@ -127,7 +127,7 @@ echo -ne "${YELLOW}Copie des pilotes dans $MEDIA_AMOVIBLE..... ${NC}"
 sleep 1
 cp $PILOTS $MEDIA_AMOVIBLE
 check_cmd ""
-echo -ne "${YELLOW}Accès à au média amovible ($MEDIA_AMOVIBLE)..... ${NC}"
+echo -ne "${YELLOW}Accès au média amovible ($MEDIA_AMOVIBLE)..... ${NC}"
 sleep 1
 cd $MEDIA_AMOVIBLE
 check_cmd ""
