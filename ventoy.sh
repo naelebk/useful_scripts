@@ -82,7 +82,6 @@ while true; do
     while [ "$(echo "$y20" | tr '[:upper:]' '[:lower:]')" != "oui" ]; do
         echo -e "${YELLOW}Périphérique       Début       Fin  Secteurs Taille Type${NC}"
         sudo fdisk -l | grep -E "^/dev/"
-        check_cmd "lister disques"
         echo -ne "${YELLOW}Saisissez quel périphérique fera office de clé USB (première colonne)\n\t=>${NC} "
         read cle
         echo -ne "${PURPLE}Êtes vous sûr ? (Oui/Non)${NC} "
