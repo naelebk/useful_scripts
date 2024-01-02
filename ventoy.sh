@@ -72,16 +72,20 @@ check_cmd ""
 cle=""
 cle2=""
 while true; do 
-    echo -e "${YELLOW}Périphérique       Début       Fin  Secteurs Taille Type${NC}"
-    sudo fdisk -l | grep -E "^/dev/"
+    echo -e "${YELLOW}Affichage des disques..... ${NC}"
+    echo -e "NAME\tSIZE\tMOUNTPOINTS"
+    lsblk | grep -E '^sd' | awk '{print "/dev/"$1" "$4" "$7}' | sort
+    check_cmd ""
     echo -ne "${YELLOW}Saisissez quel périphérique fera office de clé USB (première colonne)\n\t=>${NC} "
     read cle
     echo -ne "${PURPLE}Êtes vous sûr ? (Oui/Non)${NC} "
     read y20
     echo
     while [ "$(echo "$y20" | tr '[:upper:]' '[:lower:]')" != "oui" ]; do
-        echo -e "${YELLOW}Périphérique       Début       Fin  Secteurs Taille Type${NC}"
-        sudo fdisk -l | grep -E "^/dev/"
+        echo -e "${YELLOW}Affichage des disques..... ${NC}"
+        echo -e "NAME\tSIZE\tMOUNTPOINTS"
+        lsblk | grep -E '^sd' | awk '{print "/dev/"$1" "$4" "$7}' | sort
+        check_cmd ""
         echo -ne "${YELLOW}Saisissez quel périphérique fera office de clé USB (première colonne)\n\t=>${NC} "
         read cle
         echo -ne "${PURPLE}Êtes vous sûr ? (Oui/Non)${NC} "
@@ -90,8 +94,8 @@ while true; do
     cle2=$(echo $cle | sed -s 's/[0-9]*$//')
     echo -ne "${YELLOW}Check si $cle2 est bien un périphérique existant et amovible..... ${NC}"
     sleep 1
-    removable="$(udevadm info --query=property --name=$cle2 | grep -E "ID_USB_MODEL=" | cut -d'=' -f2)"
-    if [[ $removable != "EXTERNAL_USB" ]]; then
+    removable=$(udevadm info --query=property --name=$cle2 | grep -E "ID_USB_MODEL=")
+    if [[ -z "$removable" ]]; then
         echo -e "${RED}KO => $cle2 n'est pas un périphérique existant et amovible !${NC}"
     else
         echo -e "${GREEN}OK pour $cle2${NC}"
