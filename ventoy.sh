@@ -12,7 +12,8 @@ OUT="VENTOY.tar.gz"
 # La version est automatiquement mis à jour en fonction des nouvelles versions de ventoy
 # Comment est-elle mise à jour : script shell cherchant automatiquement la version, et 
 # modifie le présent script avec la nouvelle version
-VERSION="1.0.96"
+VERSION="1.0.96
+"
 REP="ventoy-$VERSION"
 ISO="*.iso"
 PILOTS="PILOTS.zip"
