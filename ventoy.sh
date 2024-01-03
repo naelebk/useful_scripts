@@ -65,7 +65,6 @@ if [[ "$ME" = "root" ]]; then
                 done
                 if [[ ! -d "/home/$ME" ]]; then
                     echo -e "${RED}KO => $ME doit être un \"VRAI\" utilisateur du système (il doit avoir son /home associé). : \n${NC}${YELLOW}"
-                    ls -l /home | grep 'drwx--x---+'
                     echo -ne "\n${NC}"
                 else
                     echo -e "${GREEN}OK pour $ME.${NC}"
