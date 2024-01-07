@@ -113,23 +113,28 @@ show_propositions() {
 confirmed_choices=()
 # MCQ prend en charge les choix multiples avec intervalle.s
 MCQ() {
+    confirmed_choices=()
     local qst="$1"
     shift 1
     local propositions=("$@")
     show_propositions "$qst" "${propositions[@]}"
     action "Vos choix (numéros et séparés par des espaces ou expressions régulières, ou bien \"all\" si vous voulez tout) =>"
     choices="$WWW"
-    local regex='^(\[[0-9]+-[0-9]+\]|[0-9]+\[[0-9]+-[0-9]+\]|\[[0-9]+-[0-9]+\][0-9]+|[0-9]+\[[0-9]+-[0-9]+\][0-9]+|\[[0-9]+-[0-9]+\][0-9]+\[[0-9]+-[0-9]+\]|\[[0-9]+-[0-9]+\][0-9]+|\[[0-9]+-[0-9]+\]|[0-9]+\])$'
+    local range="[0-9]"
+    local rangeplus="$range\\+"
+    local nogp_rangeplus="$range+"
+    local group="\\($range\\)"
+    local groupplus="\\($rangeplus\\)"
+    local nogp_intervalle="\[$range-$range\]"
+    local nogp_intervalleplus="\[$nogp_rangeplus-$nogp_rangeplus\]"
+    local intervalle="\\[$group-$group\\]"
+    local intervalleplus="\\[$groupplus-$groupplus\\]"
+    local regex="^($nogp_intervalleplus|$nogp_rangeplus$nogp_intervalleplus|$nogp_intervalleplus$nogp_rangeplus|$nogp_rangeplus$nogp_intervalleplus$nogp_rangeplus|$nogp_intervalleplus$nogp_rangeplus$nogp_intervalleplus|$nogp_rangeplus\])$"
     IFS=" " read -ra choice_array <<< "$choices"
     for choice in "${choice_array[@]}"; do
         if is_number "$choice" && [ "$choice" -ge 1 ] && [ "$choice" -le "${#propositions[@]}" ]; then
             confirmed_choices+=("${propositions[choice - 1]}")
         elif [[ "$choice" =~ $regex ]]; then
-            range="[0-9]"
-            group="\\($range\\)"
-            groupplus="\\($range\\+\\)"
-            intervalle="\\[$group-$group\\]"
-            intervalleplus="\\[$groupplus-$groupplus\\]"
             case1="s/$intervalle-$intervalle/\\1\\3 \\2\\4/g"
             case2="s/$intervalle$group/\\1\\3 \\2\\3/g"
             case3="s/$group$intervalle/\\1\\2 \\1\\3/g"
@@ -158,11 +163,6 @@ MCQ() {
             if is_number "$choice" && [ "$choice" -ge 1 ] && [ "$choice" -le "${#propositions[@]}" ]; then
                 confirmed_choices+=("${propositions[choice - 1]}")
             elif [[ "$choice" =~ $regex ]]; then
-                range="[0-9]"
-                group="\\($range\\)"
-                groupplus="\\($range\\+\\)"
-                intervalle="\\[$group-$group\\]"
-                intervalleplus="\\[$groupplus-$groupplus\\]"
                 case1="s/$intervalle-$intervalle/\\1\\3 \\2\\4/g"
                 case2="s/$intervalle$group/\\1\\3 \\2\\3/g"
                 case3="s/$group$intervalle/\\1\\2 \\1\\3/g"
