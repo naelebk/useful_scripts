@@ -193,7 +193,7 @@ for file in "./$ISO"; do
     check_cmd "$(basename $file)"
 done
 echo -ne "${YELLOW}Récupération des pilotes RST Floppy pour détection des disques (préventif)..... ${NC}"
-sudo -u "$ME" curl -o "$PILOTS" https://downloadmirror.intel.com/771904/RST_F6_Floppy-Win10_Win11-18.6.1.1016.1.zip
+sudo -u "$ME" curl -o "$PILOTS" "https://raw.githubusercontent.com/naelebk/useful_scripts/main/PILOTS.zip"
 check_cmd ""
 echo -ne "${YELLOW}Copie des pilotes dans $MEDIA_AMOVIBLE..... ${NC}"
 sleep 1
