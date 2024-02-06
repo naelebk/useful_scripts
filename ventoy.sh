@@ -76,6 +76,20 @@ if [[ "$ME" = "root" ]]; then
         fi
     fi
 fi
+if ! command -v curl >/dev/null 2>&1; then
+	echo -ne "${YELLOW}Curl n'est pas installé ! Installation..... ${NC}"
+    if command -v apt > /dev/null 2>&1; then
+        apt-get install curl
+    elif command -v dnf > /dev/null 2>&1; then
+        dnf install curl
+    elif command -v pacman > /dev/null 2>&1; then
+        pacman -S curl
+    else
+        echo -e "${RED}KO !${NC}"
+        exit 1
+    fi
+    check_cmd "installation de curl"
+fi
 echo -e "${YELLOW}Utilisateur : ${NC}${GREEN}$ME${NC}"
 while [[ -f $OUT ]]; do
     echo -ne "${YELLOW}Suppression de $OUT car déjà existant..... ${NC}"
