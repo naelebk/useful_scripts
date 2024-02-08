@@ -207,5 +207,8 @@ echo -ne "${YELLOW}Dézippage de $PILOTS dans $MEDIA_AMOVIBLE..... ${NC}"
 sleep 1
 unzip $PILOTS
 check_cmd "dézippage"
+echo -ne "${YELLOW}Démontage du système de fichier..... ${NC}"
+cd ../ && sudo umount "$MEDIA_AMOVIBLE"
+check_cmd "démontage propre de la clé usb"
 echo -ne "${YELLOW}Dernières vérifications..... ${NC}"
 check_cmd "tout, fin du script"
