@@ -32,12 +32,37 @@ check_cmd() {
     fi
 }
 
+# Alias : What We Want
+WWW=""
+action() {
+    echo -ne "${YELLOW}$1${NC} "
+    read WWW
+    echo -ne "${PURPLE}Êtes vous sûr ? (Oui/Non)${NC} "
+    read yon
+    while [[ "$(echo "$yon" | tr '[:upper:]' '[:lower:]')" != "oui" ]]; do
+        echo -ne "${YELLOW}$1${NC} "
+        read WWW
+        echo -ne "${PURPLE}Êtes vous sûr ? (Oui/Non)${NC} "
+        read yon
+    done
+}
+
+choice() {
+    action "$1"
+    eval "$2=$WWW"
+}
+
+choice_string() {
+    action "$1"
+    eval "$2=\"$WWW\""
+}
+
 if [[ "$(whoami)" != "root" ]]; then
 	echo -e "${RED}Le script doit être exécuter en tant que superutilisateur (root).${NC}" 
 	exit 4
 fi
-if [[ "$(ls $ISO | wc -l)" -eq 0 ]]; then
-    echo -e "${RED}Erreur, une image ISO au moins doit être présente dans ce répertoire pour exécuter le script !${NC}"
+if [[ -z $(file $ISO | grep -E "ISO") || "$(ls $ISO | wc -l)" -eq 0 ]]; then
+    echo -e "${RED}Erreur, au moins une image ISO doit être présente dans CE répertoire pour exécuter le script !${NC}"
     exit 5
 fi
 ME=$LOGNAME
@@ -80,10 +105,19 @@ if ! command -v curl >/dev/null 2>&1; then
 	echo -ne "${YELLOW}Curl n'est pas installé ! Installation..... ${NC}"
     if command -v apt > /dev/null 2>&1; then
         apt-get install curl
+        if [[ -z $(which blkid) ]]; then
+            apt-get install util-linux
+        fi
     elif command -v dnf > /dev/null 2>&1; then
         dnf install curl
+        if [[ -z $(which blkid) ]]; then
+            dnf install util-linux
+        fi
     elif command -v pacman > /dev/null 2>&1; then
         pacman -S curl
+        if [[ -z $(which blkid) ]]; then
+            pacman -S util-linux
+        fi
     else
         echo -e "${RED}KO !${NC}"
         exit 1
@@ -122,40 +156,21 @@ echo -ne "${YELLOW}Accès au répertoire $REP..... ${NC}"
 sleep 1
 cd $REP
 check_cmd ""
-cle=""
 cle2=""
 while true; do 
     echo -e "${YELLOW}Affichage des disques..... ${NC}"
-    echo -e "NAME\tSIZE\tMOUNTPOINTS"
-    lsblk | grep -E '^sd' | awk '{print "/dev/"$1" "$4" "$7}' | sort
+    echo -e "NAME\t\tSIZE\tTRAN"
+    lsblk | grep -E '^sd' | awk '{print "/dev/"$1"\t"$4"\t"$6"\t"$7}' | sort
     check_cmd ""
-    echo -ne "${YELLOW}Saisissez quel périphérique fera office de clé USB (première colonne)\n\t=>${NC} "
-    read cle
-    echo -ne "${PURPLE}Êtes vous sûr ? (Oui/Non)${NC} "
-    read y20
-    echo
-    while [ "$(echo "$y20" | tr '[:upper:]' '[:lower:]')" != "oui" ]; do
-        echo -e "${YELLOW}Affichage des disques..... ${NC}"
-        echo -e "NAME\tSIZE\tMOUNTPOINTS"
-        lsblk | grep -E '^sd' | awk '{print "/dev/"$1" "$4" "$7}' | sort
-        check_cmd ""
-        echo -ne "${YELLOW}Saisissez quel périphérique fera office de clé USB (première colonne)\n\t=>${NC} "
-        read cle
-        echo -ne "${PURPLE}Êtes vous sûr ? (Oui/Non)${NC} "
-        read y20
-    done
+    choice_string "Choisissez votre clé USB (première colonne)" cle
     cle2=$(echo $cle | sed -s 's/[0-9]*$//')
     echo -ne "${YELLOW}Check si $cle2 est bien un périphérique existant et amovible..... ${NC}"
     sleep 1
-    removable=$(udevadm info --query=property --name=$cle2 | grep -E "ID_USB_MODEL=")
-    # Légère modification par rapport à la vidéo : on regarde s'il existe bien un modèle
-    # S'il n'en existe pas (autrement dit : $removable ne contient rien) => pas un média amovible
-    # Sinon, le média est bien amovible
-    if [[ -z "$removable" ]]; then
-        echo -e "${RED}KO => $cle2 n'est pas un périphérique existant et amovible !${NC}"
-    else
+    if [[ "$(lsblk -no TRAN "$cle2" | tr -d '\n')" = "usb" ]]; then
         echo -e "${GREEN}OK pour $cle2${NC}"
         break
+    else
+        echo -e "${RED}KO !\n\t=> $cle2 n'est pas un périphérique existant et amovible !${NC}"
     fi
 done
 if [[ "$(df -h | grep -E "$cle" | wc -l)" -ne 0 ]]; then
@@ -163,7 +178,13 @@ if [[ "$(df -h | grep -E "$cle" | wc -l)" -ne 0 ]]; then
     umount $cle
     check_cmd ""
 fi
+echo -ne "${YELLOW}Lancement du script de ventoy..... ${NC}"
 sudo sh ./Ventoy2Disk.sh -i $cle2
+check_cmd ""
+if [[ -z "$(/sbin/blkid "$cle2*" | grep VTOYEFI)" ]]; then
+    echo -e "${PURPLE}Arrêt du script....${NC}"
+    exit 2
+fi
 # Modifications du script par rapport à la vidéo : il se peut que le montage ne soit pas bon
 # Et si le montage n'est pas bon, on réitère jusqu'à ce qu'il soit bon
 # ==========================================================================================
