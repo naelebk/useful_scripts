@@ -181,10 +181,13 @@ fi
 echo -ne "${YELLOW}Lancement du script de ventoy..... ${NC}"
 sudo sh ./Ventoy2Disk.sh -i $cle2
 check_cmd ""
-if [[ -z "$(/sbin/blkid "$cle2*" | grep VTOYEFI)" ]]; then
-    echo -e "${PURPLE}Arrêt du script....${NC}"
-    exit 2
-fi
+#echo -ne "${YELLOW}Attente dans actualisation de la partition VTOYEFI.... ${NC}"
+#sleep 5
+#check_cmd ""
+#if [[ -z "$(/sbin/blkid "$cle2*" | grep "Ventoy")" ]]; then
+    #echo -e "${PURPLE}Arrêt du script....${NC}"
+    #exit 2
+#fi
 # Modifications du script par rapport à la vidéo : il se peut que le montage ne soit pas bon
 # Et si le montage n'est pas bon, on réitère jusqu'à ce qu'il soit bon
 # ==========================================================================================
