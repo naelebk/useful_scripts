@@ -10,7 +10,7 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 check_cmd() {
-    if [[ $? -eq 0 ]] || [[ $? -eq 1 ]]; then
+    if [[ $? -eq 0 ]]; then
         if [ -z "$1" ]; then 
             echo -e "${GREEN}OK.${NC}"
         else 
@@ -19,8 +19,10 @@ check_cmd() {
     else
         if [[ -z "$1" ]]; then 
             echo -e "${RED}ERREUR !${NC}"
+            exit 42
         else
             echo -e "${RED}ERREUR pour $1.${NC}"
+            exit 42
         fi
     fi
 }
@@ -50,38 +52,132 @@ choice_string() {
     eval "$2=\"$WWW\""
 }
 
-if [[ "$(id -u)" != "0" ]]; then
-	echo -e "${RED}Le script doit être exécuté en tant que superutilisateur (root).${NC}" 
-	exit 1
-fi
-if [[ $(ls *.iso | wc -l) -ne 1 ]]; then
-    echo -e "${RED}Le répertoire courant ($(pwd)) ne contient aucune image iso ! Il doit en contenir exactement une.${NC}" 
-	exit 2
-fi
+super_echo() {
+    local first_color=$1
+    local message=$2
+    local end=$3
+    case "$first_color" in
+        RED)
+            echo -ne "${RED}${message}${NC}"
+            ;;
+        PURPLE)
+            echo -ne "${PURPLE}${message}${NC}"
+            ;;
+        YELLOW)
+            echo -ne "${YELLOW}${message}${NC}"
+            ;;
+        GREEN)
+            echo -ne "${GREEN}${message}${NC}"
+            ;;
+        WHITE)
+            echo -n "${message}"
+            ;;
+        *)
+            echo "Couleur non supportée : $first_color"
+            return 1
+            ;;
+    esac
+    if [[ "$end" == "n" ]]; then
+        echo -n ""
+    else
+        echo ""
+    fi
+}
 
-function is_iso_file {
-    if file_command_output=$(file "$1" | grep -q "ISO 9660"); then
+is_iso_file() {
+    if file_command_output=$(file "$1" | grep "ISO 9660"); then
         return 0
     fi
     return 1
 }
 
+download_tuto() {
+    local my_file=$1
+    local repository=$2
+    super_echo YELLOW "Archive..... " n
+    wget "https://github.com/naelebk/useful_scripts/archive/refs/heads/$my_file" > /dev/null 2>&1
+    check_cmd ""
+    super_echo YELLOW "Dézippage..... " n
+    unzip "$my_file" > /dev/null 2>&1
+    check_cmd ""
+    super_echo YELLOW "Permissions..... " n
+    chmod -R 755 *
+    check_cmd ""
+    super_echo YELLOW "Suppresion du zip..... " n
+    rm "$my_file" > /dev/null 2>&1
+    check_cmd ""
+    super_echo YELLOW "Déplacement du tuto dans l'espace courant..... " n
+    mv useful_scripts-main/$repository . > /dev/null 2>&1
+    check_cmd ""
+    super_echo YELLOW "Suppression des répertoire inutiles..... " n
+    rm -r useful_scripts-main > /dev/null 2>&1
+    check_cmd ""
+    super_echo YELLOW "Accès au répertoire $repository..... " n
+    cd $repository > /dev/null 2>&1
+    check_cmd "" 
+}
+
+make_tuto() {
+    ./sbin/woeusb --device "$1" "$2"
+}
+
+if [[ "$(id -u)" != "0" ]]; then
+	super_echo RED "Le script doit être exécuté en tant que superutilisateur (root)."
+	exit 1
+fi
+if [[ $(ls *.iso 2>/dev/null | wc -l) -ne 1 ]] && [[ "$#" -ne 1 ]]; then
+    super_echo RED "Le répertoire courant ($(pwd)) ne contient aucune image iso ! Il doit en contenir exactement une ou bien passer le fichier comme premier argument de la ligne de commande."
+    super_echo YELLOW "Synopsis :\n$0 (avec une image iso dans le répertoire courant).\nOu bien :\n$0 ISO_FILE"
+	exit 2
+fi
+
 iso_file=""
-while true; do
-    if [[ -n "$1" ]] && [[ "$#" -eq 1 ]]; then
-        iso_file="$1"
+if [[ -n "$1" ]] && [[ "$#" -eq 1 ]]; then
+    iso_file="$1"
+else
+    iso_file=$(ls -1 *.iso 2>/dev/null | head -n 1)
+fi
+if [[ -f "$iso_file" ]]; then
+    if is_iso_file "$iso_file"; then
+        super_echo GREEN "OK ! $iso_file est bien un fichier ISO valide."
     else
-        echo -e "${YELLOW}Veuillez spécifier le chemin vers le fichier ISO :${NC}"
-        read -r iso_file
+        super_echo RED "Le fichier spécifié n'est pas un fichier ISO valide."
+        exit 3
     fi
-    if [[ -f "$iso_file" ]]; then
-        if is_iso_file "$iso_file"; then
-            echo -e "${GREEN}OK ! $(basename $iso_file) est bien un fichier ISO valide.${NC}"
-            break
-        else
-            echo -e "${RED}Le fichier spécifié n'est pas un fichier ISO valide.${NC}"
-        fi
+else
+    super_echo RED "Le fichier spécifié n'existe pas."
+    exit 4
+fi
+
+cle2=""
+while true; do 
+    super_echo YELLOW "Affichage des disques..... "
+    super_echo YELLOW "NAME\t\tSIZE\tTRAN"
+    lsblk | grep -E '^sd' | awk '{print "/dev/"$1"\t"$4"\t"$6"\t"$7}' | sort | while read -r line; do
+        super_echo WHITE "$line"
+    done
+    check_cmd ""
+    choice_string "Choisissez votre clé USB (première colonne)" cle
+    cle2=$(echo "$cle" | sed -s 's/[0-9]*$//')
+    super_echo YELLOW "Check si $cle2 est bien un périphérique existant et amovible..... " n
+    sleep 1
+    if [[ "$(lsblk -no TRAN "$cle2" | tr -d '\n')" = "usb" ]]; then
+        super_echo GREEN "OK pour $cle2"
+        break
     else
-        echo -e "${RED}Le fichier spécifié n'existe pas.${NC}"
+        super_echo RED "KO !\n\t=> $cle2 n'est pas un périphérique existant et amovible !"
     fi
 done
+if [[ "$(df -h | grep -E "$cle" | wc -l)" -ne 0 ]]; then
+    super_echo YELLOW "Démontage de $cle..... " n
+    umount "$cle"
+    check_cmd ""
+fi
+
+super_echo "PURPLE" "Téléchargement du tutoriel..... "
+download_tuto "main.zip" "naelebk_tuto_woeusb"
+
+super_echo PURPLE "Processus de la création de la clé usb lancé, cela peut prendre du temps, merci de patienter..... "
+make_tuto "$iso_file" "$cle2"
+check_cmd ""
+super_echo GREEN "Terminaison du script, vous pouvez retirer votre clé usb ($cle2) en toute sécurité."
