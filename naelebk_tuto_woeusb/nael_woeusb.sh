@@ -130,22 +130,32 @@ if [[ $(ls *.iso 2>/dev/null | wc -l) -ne 1 ]] && [[ "$#" -ne 1 ]]; then
     super_echo YELLOW "Synopsis :\n$0 (avec une image iso dans le répertoire courant).\nOu bien :\n$0 ISO_FILE"
 	exit 2
 fi
-
+if [[ -d "naelebk_tuto_woeusb" ]]; then
+	super_echo YELLOW "Suppression du répertoire naelebk_tuto_woeusb..... " n
+	rm -rf naelebk_tuto_woeusb
+	check_cmd ""
+fi
+if [[ -d "useful_scripts-main" ]]; then
+    super_echo YELLOW "Suppression du répertoire useful_scripts-main..... " n
+    rm -rf useful_scripts-main
+    check_cmd ""
+fi
 iso_file=""
 if [[ -n "$1" ]] && [[ "$#" -eq 1 ]]; then
     iso_file="$1"
 else
-    iso_file=$(ls -1 *.iso 2>/dev/null | head -n 1)
+    iso_file="$PWD/$(basename $(ls -1 *.iso 2>/dev/null | head -n 1))"
 fi
+super_echo YELLOW "Vérification de l'image iso ($iso_file)..... " n
 if [[ -f "$iso_file" ]]; then
     if is_iso_file "$iso_file"; then
-        super_echo GREEN "OK ! $iso_file est bien un fichier ISO valide."
+        super_echo GREEN "OK fichier valide."
     else
-        super_echo RED "Le fichier spécifié n'est pas un fichier ISO valide."
+        super_echo RED "KO fichier invalide !"
         exit 3
     fi
 else
-    super_echo RED "Le fichier spécifié n'existe pas."
+    super_echo RED "KO fichier non existant !"
     exit 4
 fi
 
