@@ -178,12 +178,32 @@ while true; do
         super_echo RED "KO !\n\t=> $cle2 n'est pas un périphérique existant et amovible !"
     fi
 done
+i=0
+super_echo YELLOW "Démontage de $cle..... " n
 if [[ "$(df -h | grep -E "$cle" | wc -l)" -ne 0 ]]; then
-    super_echo YELLOW "Démontage de $cle..... " n
-    umount "$cle"
-    check_cmd ""
+    while [ $i -le 10 ]; do
+        if [ $i -eq 0 ]; then
+            umount "$cle"
+        else
+            umount "${cle}${i}"
+        fi
+        if [ $? -eq 0 ]; then
+            break
+        fi        
+        i=$((i+1))
+    done
+fi
+if [ $i -gt 10 ]; then
+    super_echo "RED" "KO ! Impossible de démonter $cle. Arrêt du script"
+    exit 5
 fi
 
+wimlib=$(which wimlib-imagex && echo "OK" || echo "KO")
+if [ "$wimlib" = "KO" ]; then
+    super_echo YELLOW "Installation de wimtools..... " n
+    sudo apt-get install wimtools > /dev/null 2>&1
+    check_cmd ""
+fi
 super_echo "PURPLE" "Téléchargement du tutoriel..... "
 download_tuto "main.zip" "naelebk_tuto_woeusb"
 
