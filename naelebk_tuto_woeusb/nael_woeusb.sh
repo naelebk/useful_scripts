@@ -198,7 +198,7 @@ if [ $i -gt 10 ]; then
     exit 5
 fi
 
-wimlib=$(which wimlib-imagex && echo "OK" || echo "KO")
+wimlib=$(which wimlib-imagex > /dev/null 2>&1 && echo "OK" || echo "KO")
 if [ "$wimlib" = "KO" ]; then
     super_echo YELLOW "Installation de wimtools..... " n
     sudo apt-get install wimtools > /dev/null 2>&1
