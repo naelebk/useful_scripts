@@ -182,10 +182,10 @@ i=0
 super_echo YELLOW "Démontage de $cle..... " n
 if [[ "$(df -h | grep -E "$cle" | wc -l)" -ne 0 ]]; then
     while [ $i -le 10 ]; do
-        if [ $i -eq 0 ]; then
-            umount "$cle"
+        if [ $i -eq 0 ] && [ "$(df -h | tr -s ' ' | cut -d' ' -f1 | grep -E "${cle}\$" > /dev/null 2>&1 && echo OK || echo KO)" = "OK" ]; then
+            umount "$cle" > /dev/null 2>&1
         else
-            umount "${cle}${i}"
+            umount "${cle}${i}" > /dev/null 2>&1
         fi
         if [ $? -eq 0 ]; then
             break
@@ -198,12 +198,10 @@ if [ $i -gt 10 ]; then
     exit 5
 fi
 
-wimlib=$(which wimlib-imagex > /dev/null 2>&1 && echo "OK" || echo "KO")
-if [ "$wimlib" = "KO" ]; then
-    super_echo YELLOW "Installation de wimtools..... " n
-    sudo apt-get install wimtools > /dev/null 2>&1
-    check_cmd ""
-fi
+super_echo YELLOW "Installation de wimtools..... " n
+sudo apt-get install wimtools > /dev/null 2>&1
+check_cmd ""
+
 super_echo "PURPLE" "Téléchargement du tutoriel..... "
 download_tuto "main.zip" "naelebk_tuto_woeusb"
 
