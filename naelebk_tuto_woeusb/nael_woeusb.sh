@@ -199,7 +199,7 @@ if [ $i -gt 10 ]; then
 fi
 
 super_echo YELLOW "Installation de wimtools..... " n
-sudo apt-get install wimtools > /dev/null 2>&1
+sudo apt-get install -y wimtools > /dev/null 2>&1
 check_cmd ""
 
 super_echo "PURPLE" "Téléchargement du tutoriel..... "
