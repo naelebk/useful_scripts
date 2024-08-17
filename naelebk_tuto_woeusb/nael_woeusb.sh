@@ -190,12 +190,14 @@ if [[ "$(df -h | grep -E "$cle" | wc -l)" -ne 0 ]]; then
         if [ $? -eq 0 ]; then
             break
         fi        
-        i=$((i+1))
+        ((i++))
     done
 fi
 if [ $i -gt 10 ]; then
     super_echo "RED" "KO ! Impossible de démonter $cle. Arrêt du script"
     exit 5
+else
+     echo -e "${GREEN}OK.${NC}"
 fi
 
 super_echo YELLOW "Installation de wimtools..... " n
