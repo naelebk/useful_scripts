@@ -3,6 +3,10 @@ GREEN='\033[0;32m'
 PURPLE='\033[0;35m'
 RED='\033[0;31m'
 NC='\033[0m'
+ID_ROOT=0
+ROOT=$(grep -E ":${ID_ROOT}:" /etc/passwd | cut -d: -f1)
+ME=$LOGNAME
+ID_ME=$(grep "$ME" < /etc/passwd | cut -d: -f3)
 
 check_cmd() {
     if [[ $? -eq 0 ]] || [[ $? -eq 1 ]]; then
@@ -27,6 +31,10 @@ updateee() {
     check_cmd ""
 }
 
+is_root() {
+    test $(id -u) -eq $ID_ROOT && return 0 || return 1 
+}
+
 # Fonction permettant de tester si l'argument est un nombre
 # Renvoie 0 si c'est le cas, 1 sinon
 is_number() {
@@ -45,6 +53,44 @@ install_app() {
     else
         echo -e "${GREEN}OK pour $1 : déjà installé.${NC}"
     fi
+}
+
+install_deb() {
+    echo -ne "${YELLOW}Installation de $1..... ${NC}"
+    dpkg -i "$1" > /dev/null 2>&1
+    check_cmd "$1"
+}
+
+git_config() {
+    local email="$1"
+    local package_manager="$2"
+    install_app "git" "$package_manager"
+    install_app "xsel" "$package_manager"
+    echo -ne "${YELLOW}Configuration de git avec $email.....${NC} "
+    sudo -u "$ME" git config --global user.email "$email"
+    check_cmd ""
+    echo -ne "${YELLOW}Génération clé SSH avec $email.....${NC} "
+    sudo -u "$ME" ssh-keygen -t rsa -b 4096 -C "$email"
+    check_cmd ""
+    echo -ne "${YELLOW}Copie de la clé ssh dans le presse papier.....${NC} "
+    xsel --clipboard < "/home/$ME/.ssh/id_rsa.pub"
+    check_cmd ""
+    echo -ne "${GREEN}Copiez la clé ssh sur votre compte github, puis appuyez sur la touche ENTRÉE une fois cela fait.${NC}"
+    read reponse
+}
+
+# Fonction permettant de faire un saut de ligne
+saut_de_ligne() {
+	echo >> "$1"
+}
+
+# Fonction permettant de faire un affichage simple de $1 dans $2
+aff() {
+	printf "%s\n" "$1" >> "$2"
+}
+
+use_systemd() {
+    test "$(ps -p 1 -o comm=)" = "systemd" && return 0 || return 1
 }
 
 # Alias : What We Want
