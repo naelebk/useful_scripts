@@ -121,6 +121,82 @@ make_tuto() {
     ./sbin/woeusb --device "$1" "$2"
 }
 
+install_package() {
+    PACKAGES_NAME=$@
+    for PACKAGE_NAME in $PACKAGES_NAME; do
+        super_echo YELLOW "Installation de $PACKAGE_NAME..... " n
+        if [ -f /etc/debian_version ]; then
+            sudo apt-get update > /dev/null 2>&1
+            sudo apt-get install -y "$PACKAGE_NAME" > /dev/null 2>&1
+        elif [ -f /etc/redhat-release ]; then
+            if command -v dnf >/dev/null 2>&1; then
+                sudo dnf install -y "$PACKAGE_NAME" > /dev/null 2>&1 
+            else
+                sudo yum install -y "$PACKAGE_NAME" > /dev/null 2>&1
+            fi
+        elif [ -f /etc/arch-release ]; then
+            sudo pacman -Sy --noconfirm "$PACKAGE_NAME" > /dev/null 2>&1
+        elif [ -f /etc/SuSE-release ]; then
+            sudo zypper install -y "$PACKAGE_NAME" > /dev/null 2>&1
+        else
+            return 1
+        fi
+        check_cmd "$PACKAGE_NAME"
+    done
+    return 0
+}
+
+get_wimtools_package_name() {
+    if [ -f /etc/redhat-release ] || [ -f /etc/arch-release ] || [ -f /etc/SuSE-release ]; then
+        echo "wimlib"
+    else
+        echo "wimtools"
+    fi
+}
+
+install_bios_package() {
+    if [ -f /etc/debian_version ]; then
+        install_package "grub-pc-bin" "grub-efi-amd64-bin"
+    elif [ -f /etc/redhat-release ]; then
+        install_package "grub2-pc" "grub2-efi-x64"
+    elif [ -f /etc/arch-release ]; then
+        install_package "grub"
+    elif [ -f /etc/SuSE-release ]; then
+        install_package "grub2-i386-pc" "grub2-x86_64-efi"
+    else
+        super_echo RED "Distribution non suportée. Terminaison."
+        exit 10
+    fi
+}
+
+umount_usb() {
+    USB_DEVICE=$1
+    if [ -z "$USB_DEVICE" ]; then
+        super_echo RED "Aucun périphérique USB spécifié."
+        return 1
+    fi
+    if [ ! -b "$USB_DEVICE" ]; then
+        super_echo RED "Le périphérique $USB_DEVICE n'existe pas."
+        return 1
+    fi
+    PARTITIONS=$(lsblk -lnpo NAME "$USB_DEVICE" | grep -v "^$USB_DEVICE$")
+    if [ -z "$PARTITIONS" ]; then
+        super_echo RED "Aucune partition trouvée sur $USB_DEVICE."
+        return 1
+    fi
+    for PARTITION in $PARTITIONS; do
+        super_echo YELLOW "Démontage de $PARTITION..... " n
+        grep -q "$PARTITION" /proc/mounts && sudo umount "$PARTITION" > /dev/null 2>&1
+        check_cmd ""
+    done
+    return 0
+}
+
+detect_usb_device() {
+    USB_DEVICES=$(lsblk -lnpo NAME,TRAN | grep "usb" | awk '{print $1}' | head -n 1)
+    test -z "$USB_DEVICES" && echo "KO" || echo "$USB_DEVICES"
+}
+
 if [[ "$(id -u)" != "0" ]]; then
 	super_echo RED "Le script doit être exécuté en tant que superutilisateur (root)."
 	exit 1
@@ -149,65 +225,42 @@ fi
 super_echo YELLOW "Vérification de l'image iso ($iso_file)..... " n
 if [[ -f "$iso_file" ]]; then
     if is_iso_file "$iso_file"; then
-        super_echo GREEN "OK fichier valide."
+        super_echo GREEN "OK. Fichier ISO valide."
     else
-        super_echo RED "KO fichier invalide !"
+        super_echo RED "KO ! Fichier ISO invalide."
         exit 3
     fi
 else
-    super_echo RED "KO fichier non existant !"
+    super_echo RED "KO ! $iso_file n'est pas un fichier."
     exit 4
 fi
 
-cle2=""
-while true; do 
-    super_echo YELLOW "Affichage des disques..... "
-    super_echo YELLOW "NAME\t\tSIZE\tTRAN"
-    lsblk | grep -E '^sd' | awk '{print "/dev/"$1"\t"$4"\t"$6"\t"$7}' | sort | while read -r line; do
-        super_echo WHITE "$line"
-    done
-    check_cmd ""
-    choice_string "Choisissez votre clé USB (première colonne)" cle
-    cle2=$(echo "$cle" | sed -s 's/[0-9]*$//')
-    super_echo YELLOW "Check si $cle2 est bien un périphérique existant et amovible..... " n
-    sleep 1
-    if [[ "$(lsblk -no TRAN "$cle2" | tr -d '\n')" = "usb" ]]; then
-        super_echo GREEN "OK pour $cle2"
-        break
-    else
-        super_echo RED "KO !\n\t=> $cle2 n'est pas un périphérique existant et amovible !"
-    fi
-done
-i=0
-super_echo YELLOW "Démontage de $cle..... " n
-if [[ "$(df -h | grep -E "$cle" | wc -l)" -ne 0 ]]; then
-    while [ $i -le 10 ]; do
-        if [ $i -eq 0 ] && [ "$(df -h | tr -s ' ' | cut -d' ' -f1 | grep -E "${cle}\$" > /dev/null 2>&1 && echo OK || echo KO)" = "OK" ]; then
-            umount "$cle" > /dev/null 2>&1
-        else
-            umount "${cle}${i}" > /dev/null 2>&1
-        fi
-        if [ $? -eq 0 ]; then
-            break
-        fi        
-        ((i++))
-    done
-fi
-if [ $i -gt 10 ]; then
-    super_echo "RED" "KO ! Impossible de démonter $cle. Arrêt du script"
+super_echo YELLOW "Détection de la clé usb..... " n
+cle=$(detect_usb_device)
+if [ $cle = "KO" ]; then
+    super_echo RED "KO ! Aucune clé usb valide détectée."
     exit 5
-else
-     echo -e "${GREEN}OK.${NC}"
+fi
+check_cmd ""
+
+if ! grep -qs "$cle" /proc/mounts; then
+    super_echo YELLOW "Montage de $cle dans /media...." n
+    mount "$cle" /media
+    check_cmd ""
 fi
 
-super_echo YELLOW "Installation de wimtools..... " n
-sudo apt-get install -y wimtools > /dev/null 2>&1
-check_cmd ""
+umount_usb "$cle"
+
+install_package "$(get_wimtools_package_name)"
+install_bios_package
 
 super_echo "PURPLE" "Téléchargement du tutoriel..... "
 download_tuto "main.zip" "naelebk_tuto_woeusb"
 
 super_echo PURPLE "Processus de la création de la clé usb lancé, cela peut prendre du temps, merci de patienter..... "
-make_tuto "$iso_file" "$cle2"
+make_tuto "$iso_file" "$cle"
 check_cmd ""
-super_echo GREEN "Terminaison du script, vous pouvez retirer votre clé usb ($cle2) en toute sécurité."
+
+super_echo YELLOW "Terminaison du script, éjection de $cle..... " n
+sudo eject "$cle" > /dev/null 2>&1
+check_cmd ""
