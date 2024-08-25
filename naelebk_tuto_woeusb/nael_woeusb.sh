@@ -268,7 +268,7 @@ fi
 check_cmd "$cle"
 
 if ! grep -qs "$cle" /proc/mounts; then
-    mount_usb $cle
+    mount_usb "$cle"
 fi
 
 umount_usb "$cle"
