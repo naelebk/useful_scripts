@@ -169,6 +169,15 @@ install_bios_package() {
     fi
 }
 
+get_partitions() {
+    PARTITIONS=$(lsblk -lnpo NAME "$1" | grep -v "^$1$")
+    if [ -z "$PARTITIONS" ]; then
+        super_echo RED "Aucune partition trouvée sur $1."
+        exit 15
+    fi
+    echo "$PARTITIONS"
+}
+
 umount_usb() {
     USB_DEVICE=$1
     if [ -z "$USB_DEVICE" ]; then
@@ -179,11 +188,7 @@ umount_usb() {
         super_echo RED "Le périphérique $USB_DEVICE n'existe pas."
         return 1
     fi
-    PARTITIONS=$(lsblk -lnpo NAME "$USB_DEVICE" | grep -v "^$USB_DEVICE$")
-    if [ -z "$PARTITIONS" ]; then
-        super_echo RED "Aucune partition trouvée sur $USB_DEVICE."
-        return 1
-    fi
+    PARTITIONS=$(get_partitions "$USB_DEVICE")
     for PARTITION in $PARTITIONS; do
         super_echo YELLOW "Démontage de $PARTITION..... " n
         grep -q "$PARTITION" /proc/mounts && sudo umount "$PARTITION" > /dev/null 2>&1
@@ -192,9 +197,28 @@ umount_usb() {
     return 0
 }
 
+mount_usb() {
+    USB_DEVICE=$1
+    PARTITIONS=$(get_partitions "$USB_DEVICE")
+    for PARTITION in $PARTITIONS; do
+        super_echo YELLOW "Montage de $PARTITION..... " n
+        if ! grep -q "$PARTITION" /proc/mounts; then
+            sudo mount "$PARTITION" /media/ > /dev/null 2>&1
+            check_cmd ""
+        else
+            super_echo GREEN "OK. Partition $PARTITION déjà montée."
+        fi
+    done
+}
+
 detect_usb_device() {
-    USB_DEVICES=$(lsblk -lnpo NAME,TRAN | grep "usb" | awk '{print $1}' | head -n 1)
-    test -z "$USB_DEVICES" && echo "KO" || echo "$USB_DEVICES"
+    USB_DEVICES=$(lsblk -lnpo NAME,TRAN | grep "usb" | awk '{print $1}')
+    DEVICE_COUNT=$(echo "$USB_DEVICES" | wc -l)
+    if [[ "$DEVICE_COUNT" -eq 1 && ! -z "$USB_DEVICES" ]]; then
+        echo "$USB_DEVICES"
+    else
+        echo "KO"
+    fi 
 }
 
 if [[ "$(id -u)" != "0" ]]; then
@@ -238,15 +262,13 @@ fi
 super_echo YELLOW "Détection de la clé usb..... " n
 cle=$(detect_usb_device)
 if [ $cle = "KO" ]; then
-    super_echo RED "KO ! Aucune clé usb valide détectée."
+    super_echo RED "KO ! Aucune clé usb valide détectée ou plusieurs médias amovibles connectés (merci d'en connecter qu'un seul à votre ordinateur). Terminaison."
     exit 5
 fi
-check_cmd ""
+check_cmd "$cle"
 
 if ! grep -qs "$cle" /proc/mounts; then
-    super_echo YELLOW "Montage de $cle dans /media...." n
-    mount "$cle" /media
-    check_cmd ""
+    mount_usb $cle
 fi
 
 umount_usb "$cle"
