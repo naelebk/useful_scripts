@@ -275,10 +275,10 @@ umount_usb "$cle"
 install_package "$(get_wimtools_package_name)"
 install_bios_package
 
-super_echo "PURPLE" "Téléchargement du tutoriel..... "
+super_echo "PURPLE" "Téléchargement du tutoriel"
 download_tuto "main.zip" "naelebk_tuto_woeusb"
 
-super_echo PURPLE "Processus de la création de la clé usb lancé, cela peut prendre du temps, merci de patienter..... "
+super_echo PURPLE "Processus de la création de la clé usb lancé, cela peut prendre du temps, merci de patienter"
 make_tuto "$iso_file" "$cle"
 check_cmd ""
 
