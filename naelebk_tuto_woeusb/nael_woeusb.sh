@@ -8,6 +8,7 @@ GREEN='\033[0;32m'
 PURPLE='\033[0;35m'
 RED='\033[0;31m'
 NC='\033[0m'
+TYPE_ISO="ISO 9660"
 
 check_cmd() {
     if [[ $? -eq 0 ]]; then
@@ -84,8 +85,8 @@ super_echo() {
     fi
 }
 
-is_iso_file() {
-    if file_command_output=$(file "$1" | grep "ISO 9660"); then
+is_file_type() {
+    if file_command_output=$(file "$1" | grep "$2"); then
         return 0
     fi
     return 1
@@ -214,11 +215,7 @@ mount_usb() {
 detect_usb_device() {
     USB_DEVICES=$(lsblk -lnpo NAME,TRAN | grep "usb" | awk '{print $1}')
     DEVICE_COUNT=$(echo "$USB_DEVICES" | wc -l)
-    if [[ "$DEVICE_COUNT" -eq 1 && ! -z "$USB_DEVICES" ]]; then
-        echo "$USB_DEVICES"
-    else
-        echo "KO"
-    fi 
+    [[ "$DEVICE_COUNT" -eq 1 && ! -z "$USB_DEVICES" ]] && echo "$USB_DEVICES" || echo "KO"
 }
 
 if [[ "$(id -u)" != "0" ]]; then
@@ -248,7 +245,7 @@ else
 fi
 super_echo YELLOW "Vérification de l'image iso ($iso_file)..... " n
 if [[ -f "$iso_file" ]]; then
-    if is_iso_file "$iso_file"; then
+    if is_file_type "$iso_file" "$TYPE_ISO"; then
         super_echo GREEN "OK. Fichier ISO valide."
     else
         super_echo RED "KO ! Fichier ISO invalide."
@@ -268,9 +265,11 @@ fi
 check_cmd "$cle"
 
 if ! grep -qs "$cle" /proc/mounts; then
+    super_echo PURPLE "Montage de $cle"
     mount_usb "$cle"
 fi
 
+super_echo PURPLE "Démontage de $cle"
 umount_usb "$cle"
 
 install_package "$(get_wimtools_package_name)"
