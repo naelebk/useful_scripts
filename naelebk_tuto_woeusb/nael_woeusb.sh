@@ -171,7 +171,7 @@ install_bios_package() {
 }
 
 get_partitions() {
-    PARTITIONS=$(lsblk -lnpo NAME "$1" | grep -v "^$1$")
+    PARTITIONS=$(lsblk -lnpo NAME "$1" | grep -v "^$1$" | grep '[0-9]')
     if [ -z "$PARTITIONS" ]; then
         super_echo RED "Aucune partition trouvée sur $1."
         exit 15
@@ -189,7 +189,8 @@ umount_usb() {
         super_echo RED "Le périphérique $USB_DEVICE n'existe pas."
         return 1
     fi
-    PARTITIONS=$(get_partitions "$USB_DEVICE")
+    # Inversement de l'ordre du démontage (car erreur sur système de fichier sinon...)
+    PARTITIONS=$(get_partitions "$USB_DEVICE" | tr ' ' '\n' | tac | tr '\n' ' ')
     for PARTITION in $PARTITIONS; do
         super_echo YELLOW "Démontage de $PARTITION..... " n
         grep -q "$PARTITION" /proc/mounts && sudo umount "$PARTITION" > /dev/null 2>&1

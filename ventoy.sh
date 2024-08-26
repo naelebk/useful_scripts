@@ -9,6 +9,7 @@ PURPLE='\033[0;35m'
 RED='\033[0;31m'
 NC='\033[0m'
 OUT="VENTOY.tar.gz"
+TYPE_ISO="ISO 9660"
 # La version est automatiquement mis à jour en fonction des nouvelles versions de ventoy
 # Comment est-elle mise à jour : script shell cherchant automatiquement la version, et 
 # modifie le présent script avec la nouvelle version
@@ -26,8 +27,10 @@ check_cmd() {
     else
         if [[ -z "$1" ]]; then 
             echo -e "${RED}ERREUR !${NC}"
+            exit 42
         else
             echo -e "${RED}ERREUR pour $1.${NC}"
+            exit 42
         fi
     fi
 }
@@ -57,182 +60,272 @@ choice_string() {
     eval "$2=\"$WWW\""
 }
 
-if [[ "$(whoami)" != "root" ]]; then
+is_file_type() {
+    if file_command_output=$(file "$1" | grep "$2"); then
+        return 0
+    fi
+    return 1
+}
+
+super_echo() {
+    local first_color=$1
+    local message=$2
+    local end=$3
+    case "$first_color" in
+        RED)
+            echo -ne "${RED}${message}${NC}"
+            ;;
+        PURPLE)
+            echo -ne "${PURPLE}${message}${NC}"
+            ;;
+        YELLOW)
+            echo -ne "${YELLOW}${message}${NC}"
+            ;;
+        GREEN)
+            echo -ne "${GREEN}${message}${NC}"
+            ;;
+        WHITE)
+            echo -n "${message}"
+            ;;
+        *)
+            echo "Couleur non supportée : $first_color"
+            return 1
+            ;;
+    esac
+    if [[ "$end" == "n" ]]; then
+        echo -n ""
+    else
+        echo ""
+    fi
+}
+
+install_package() {
+    PACKAGES_NAME=$@
+    for PACKAGE_NAME in $PACKAGES_NAME; do
+        super_echo YELLOW "Installation de $PACKAGE_NAME..... " n
+        if [ -f /etc/debian_version ]; then
+            sudo apt-get update > /dev/null 2>&1
+            sudo apt-get install -y "$PACKAGE_NAME" > /dev/null 2>&1
+        elif [ -f /etc/redhat-release ]; then
+            if command -v dnf >/dev/null 2>&1; then
+                sudo dnf install -y "$PACKAGE_NAME" > /dev/null 2>&1 
+            else
+                sudo yum install -y "$PACKAGE_NAME" > /dev/null 2>&1
+            fi
+        elif [ -f /etc/arch-release ]; then
+            sudo pacman -Sy --noconfirm "$PACKAGE_NAME" > /dev/null 2>&1
+        elif [ -f /etc/SuSE-release ]; then
+            sudo zypper install -y "$PACKAGE_NAME" > /dev/null 2>&1
+        else
+            return 1
+        fi
+        check_cmd "$PACKAGE_NAME"
+    done
+    return 0
+}
+
+get_wimtools_package_name() {
+    if [ -f /etc/redhat-release ] || [ -f /etc/arch-release ] || [ -f /etc/SuSE-release ]; then
+        echo "wimlib"
+    else
+        echo "wimtools"
+    fi
+}
+
+install_bios_package() {
+    if [ -f /etc/debian_version ]; then
+        install_package "grub-pc-bin" "grub-efi-amd64-bin"
+    elif [ -f /etc/redhat-release ]; then
+        install_package "grub2-pc" "grub2-efi-x64"
+    elif [ -f /etc/arch-release ]; then
+        install_package "grub"
+    elif [ -f /etc/SuSE-release ]; then
+        install_package "grub2-i386-pc" "grub2-x86_64-efi"
+    else
+        super_echo RED "Distribution non suportée. Terminaison."
+        exit 10
+    fi
+}
+
+get_partitions() {
+    PARTITIONS=$(lsblk -lnpo NAME "$1" | grep -v "^$1$ | grep '[0-9]'")
+    if [ -z "$PARTITIONS" ]; then
+        super_echo RED "Aucune partition trouvée sur $1."
+        exit 15
+    fi
+    echo "$PARTITIONS"
+}
+
+umount_usb() {
+    USB_DEVICE=$1
+    if [ -z "$USB_DEVICE" ]; then
+        super_echo RED "Aucun périphérique USB spécifié."
+        return 1
+    fi
+    if [ ! -b "$USB_DEVICE" ]; then
+        super_echo RED "Le périphérique $USB_DEVICE n'existe pas."
+        return 1
+    fi
+    # Inversement de l'ordre du démontage (car erreur sur système de fichier sinon...)
+    PARTITIONS=$(get_partitions "$USB_DEVICE" | tr ' ' '\n' | tac | tr '\n' ' ')
+    for PARTITION in $PARTITIONS; do
+        super_echo YELLOW "Démontage de $PARTITION..... " n
+        grep -q "$PARTITION" /proc/mounts && sudo umount "$PARTITION" > /dev/null 2>&1
+        check_cmd ""
+    done
+    return 0
+}
+
+mount_usb() {
+    USB_DEVICE=$1
+    TARGET=$2
+    PARTITIONS=$(get_partitions "$USB_DEVICE")
+    for PARTITION in $PARTITIONS; do
+        super_echo YELLOW "Montage de $PARTITION..... " n
+        if ! grep -q "$PARTITION" /proc/mounts; then
+            sudo mount "$PARTITION" "$TARGET" > /dev/null 2>&1
+            check_cmd ""
+        else
+            super_echo GREEN "OK. Partition $PARTITION déjà montée."
+        fi
+    done
+}
+
+detect_usb_device() {
+    USB_DEVICES=$(lsblk -lnpo NAME,TRAN | grep "usb" | awk '{print $1}')
+    DEVICE_COUNT=$(echo "$USB_DEVICES" | wc -l)
+    [[ "$DEVICE_COUNT" -eq 1 && ! -z "$USB_DEVICES" ]] && echo "$USB_DEVICES" || echo "KO"
+}
+
+if [[ "$(id -u)" != "0" ]]; then
 	echo -e "${RED}Le script doit être exécuter en tant que superutilisateur (root).${NC}" 
 	exit 4
 fi
+
 if [[ -z $(file $ISO | grep -E "ISO") || "$(ls $ISO | wc -l)" -eq 0 ]]; then
     echo -e "${RED}Erreur, au moins une image ISO doit être présente dans CE répertoire pour exécuter le script !${NC}"
     exit 5
 fi
-ME=$LOGNAME
-# Légère modification par rapport à la vidéo : de si $ME est root (car il ne doit pas être root)
-# Pour la bonne exécution de ce script, l'utilisateur "actuellement" connecté doit avoir son /home
-# associé, donc on le vérifie
-if [[ "$ME" = "root" ]]; then
-    ME=$SUDO_USER
-    if [[ -z "$ME" ]] || [[ "$ME" = "root" ]]; then
-        ME2=$(ls -l /home | grep -E "^d.*\+" | rev | awk '{print $1}' | rev)
-        number=$(echo "$ME2" | wc -l)
-        if [[ "$number" -ne 1 ]] || [[ ! -d "/home/$ME2" ]]; then
-            while true; do
-                echo "$ME2"
-                echo -ne "${YELLOW}Saisissez votre nom d'utilisateur (parmis ceux ci-dessus, le votre et pas un autre) :${NC} "
-                read ME
-                echo -ne "${PURPLE}Êtes vous sûr ? (Oui/Non)${NC} "
-                read y19
-                while [ "$(echo "$y19" | tr '[:upper:]' '[:lower:]')" != "oui" ]; do
-                    echo "$ME2"
-                    echo -ne "${YELLOW}Saisissez votre nom d'utilisateur (parmis ceux ci-dessus, le votre et pas un autre) :${NC} "
-                    read ME
-                    echo -ne "${PURPLE}Êtes vous sûr ? (Oui/Non)${NC} "
-                    read y19
-                done
-                if [[ ! -d "/home/$ME" ]]; then
-                    echo -e "${RED}KO => $ME doit être un \"VRAI\" utilisateur du système (il doit avoir son /home associé). : \n${NC}${YELLOW}"
-                    echo -ne "\n${NC}"
-                else
-                    echo -e "${GREEN}OK pour $ME.${NC}"
-                    break
-                fi
-            done
-        else
-            ME="$ME2"
-        fi
-    fi
-fi
-if ! command -v curl >/dev/null 2>&1; then
-	echo -ne "${YELLOW}Curl n'est pas installé ! Installation..... ${NC}"
-    if command -v apt > /dev/null 2>&1; then
-        apt-get install curl
-        if [[ -z $(which blkid) ]]; then
-            apt-get install util-linux
-        fi
-    elif command -v dnf > /dev/null 2>&1; then
-        dnf install curl
-        if [[ -z $(which blkid) ]]; then
-            dnf install util-linux
-        fi
-    elif command -v pacman > /dev/null 2>&1; then
-        pacman -S curl
-        if [[ -z $(which blkid) ]]; then
-            pacman -S util-linux
-        fi
+
+for file in $ISO; do
+    super_echo YELLOW "Vérification du fichier $file..... " n
+    if is_file_type "$file" "$TYPE_ISO"; then
+        super_echo GREEN "OK. Fichier ISO $file valide."
     else
-        echo -e "${RED}KO !${NC}"
-        exit 1
+        super_echo RED "KO ! Fichier ISO $file invalide."
+        exit 33
     fi
+done
+
+if ! command -v curl >/dev/null 2>&1; then
+	echo -ne "${YELLOW}Curl n'est pas installé. Installation..... ${NC}"
+    install_package "curl"
     check_cmd "installation de curl"
+    if [[ -z $(which blkid) ]]; then
+        super_echo YELLOW "Installation de util-linux (pour ventoy)..... " n
+        install_package "util-linux"
+        check_cmd "util-linux"
+    fi
 fi
-echo -e "${YELLOW}Utilisateur : ${NC}${GREEN}$ME${NC}"
+
 while [[ -f $OUT ]]; do
     echo -ne "${YELLOW}Suppression de $OUT car déjà existant..... ${NC}"
-    sleep 1
     rm -rf $OUT
     check_cmd ""
 done
 while [[ -d $REP ]]; do
     echo -ne "${YELLOW}Suppression de $REP car déjà existant..... ${NC}"
-    sleep 1
     rm -rf $REP
     check_cmd ""
 done
 echo -e "${YELLOW}Récupération des scripts pour installation (out : $OUT)..... ${NC}"
-sudo -u "$ME" curl -LJ -o $OUT "https://github.com/ventoy/Ventoy/releases/download/v$VERSION/ventoy-$VERSION-linux.tar.gz"
+curl -LJ -o $OUT "https://github.com/ventoy/Ventoy/releases/download/v$VERSION/ventoy-$VERSION-linux.tar.gz"
 check_cmd ""
 echo -ne "${YELLOW}Permissions sur le zip..... ${NC}"
-sleep 1
-sudo -u "$ME" chmod -R 755 $OUT > /dev/null 2>&1
+chmod -R 755 $OUT > /dev/null 2>&1
 check_cmd ""
 echo -ne "${YELLOW}Dézippage des scripts..... ${NC}"
-sleep 1
-sudo -u "$ME" tar -zxvf $OUT > /dev/null 2>&1
+tar -zxvf $OUT > /dev/null 2>&1
 check_cmd ""
 echo -ne "${YELLOW}Permissions du répertoire $REP..... ${NC}"
-sleep 1
-sudo -u "$ME" chmod -R 755 $REP/*
+chmod -R 777 $REP
 check_cmd ""
 echo -ne "${YELLOW}Accès au répertoire $REP..... ${NC}"
-sleep 1
 cd $REP
 check_cmd ""
-cle2=""
-while true; do 
-    echo -e "${YELLOW}Affichage des disques..... ${NC}"
-    echo -e "NAME\t\tSIZE\tTRAN"
-    lsblk | grep -E '^sd' | awk '{print "/dev/"$1"\t"$4"\t"$6"\t"$7}' | sort
-    check_cmd ""
-    choice_string "Choisissez votre clé USB (première colonne)" cle
-    cle2=$(echo $cle | sed -s 's/[0-9]*$//')
-    echo -ne "${YELLOW}Check si $cle2 est bien un périphérique existant et amovible..... ${NC}"
-    sleep 1
-    if [[ "$(lsblk -no TRAN "$cle2" | tr -d '\n')" = "usb" ]]; then
-        echo -e "${GREEN}OK pour $cle2${NC}"
-        break
-    else
-        echo -e "${RED}KO !\n\t=> $cle2 n'est pas un périphérique existant et amovible !${NC}"
-    fi
-done
-if [[ "$(df -h | grep -E "$cle" | wc -l)" -ne 0 ]]; then
-    echo -ne "${YELLOW}Démontage de $cle..... ${NC}"
-    umount $cle
-    check_cmd ""
+super_echo YELLOW "Détection de la clé usb..... " n
+cle=$(detect_usb_device)
+if [ $cle = "KO" ]; then
+    super_echo RED "KO ! Aucune clé usb valide détectée ou plusieurs médias amovibles connectés (merci d'en connecter qu'un seul à votre ordinateur). Terminaison."
+    exit 5
 fi
+check_cmd "$cle"
+
+if ! grep -qs "$cle" /proc/mounts; then
+    super_echo PURPLE "Montage de $cle"
+    mount_usb "$cle"
+fi
+
+super_echo PURPLE "Démontage de $cle"
+umount_usb "$cle"
+
+install_package "$(get_wimtools_package_name)"
+install_bios_package
+
 echo -ne "${YELLOW}Lancement du script de ventoy..... ${NC}"
-sudo sh ./Ventoy2Disk.sh -i $cle2
+sudo sh ./Ventoy2Disk.sh -I "$cle"
 check_cmd ""
-#echo -ne "${YELLOW}Attente dans actualisation de la partition VTOYEFI.... ${NC}"
-#sleep 5
-#check_cmd ""
-#if [[ -z "$(/sbin/blkid "$cle2*" | grep "Ventoy")" ]]; then
-    #echo -e "${PURPLE}Arrêt du script....${NC}"
-    #exit 2
-#fi
-# Modifications du script par rapport à la vidéo : il se peut que le montage ne soit pas bon
-# Et si le montage n'est pas bon, on réitère jusqu'à ce qu'il soit bon
-# ==========================================================================================
-MEDIA_AMOVIBLE="/home/$ME/VENTOY_USB_DIR"
-if [[ ! -d "$MEDIA_AMOVIBLE" ]]; then
-    echo -ne "${YELLOW}Création du répertoire $MEDIA_AMOVIBLE..... ${NC}"
-    sudo -u "$ME" mkdir "$MEDIA_AMOVIBLE"
+
+MEDIA_AMOVIBLE="/media/ventoy_usb_dir"
+if [ ! -d "$MEDIA_AMOVIBLE" ]; then
+    super_echo YELLOW "Création du répertoire $MEDIA_AMOVIBLE..... " n
+    mkdir "$MEDIA_AMOVIBLE"
     check_cmd ""
 fi
-echo -ne "${YELLOW}Montage de $cle dans $MEDIA_AMOVIBLE..... ${NC}"
-i=0
-mount "$cle" "$MEDIA_AMOVIBLE" > /dev/null 2>&1
-while [[ "$?" -ne 0 ]]; do
-    i=$((i+1))
-    mount "$cle$i" "$MEDIA_AMOVIBLE" > /dev/null 2>&1
-done
-if [[ "$i" -eq 0 ]]; then
-    check_cmd "montage de $cle"
-else
-    check_cmd "montage de $cle($i)"
-fi
-# ==========================================================================================
-cd ..
-for file in "./$ISO"; do
+
+super_echo YELLOW "Détection de la partition la plus grande..... " n
+largest=$(lsblk -bn -o NAME,SIZE "$cle" | tail -n +2 | sort -k 2 | head -n 1 | awk '{print $1}' | sed -E 's/[├─└─]+/\/dev\//g')
+check_cmd "$largest"
+
+super_echo YELLOW "Montage de $largest dans $MEDIA_AMOVIBLE..... " n
+sudo mount "$largest" "$MEDIA_AMOVIBLE"
+check_cmd ""
+
+echo -ne "${YELLOW}Retour au répertoire de départ..... ${NC}"
+cd - > /dev/null 2>&1
+check_cmd ""
+
+for file in $ISO; do
     echo -ne "${YELLOW}Copie de $(basename $file) dans $MEDIA_AMOVIBLE..... ${NC}" 
     cp $file $MEDIA_AMOVIBLE
     check_cmd "$(basename $file)"
 done
+
 echo -ne "${YELLOW}Récupération des pilotes RST Floppy pour détection des disques (préventif)..... ${NC}"
-sudo -u "$ME" curl -o "$PILOTS" "https://raw.githubusercontent.com/naelebk/useful_scripts/main/PILOTS.zip"
+curl -o "$PILOTS" "https://raw.githubusercontent.com/naelebk/useful_scripts/main/PILOTS.zip"
+check_cmd ""
+super_echo YELLOW "Permissions sur les pilotes ($PILOTS)..... " n
+chmod 777 "$PILOTS"
 check_cmd ""
 echo -ne "${YELLOW}Copie des pilotes dans $MEDIA_AMOVIBLE..... ${NC}"
-sleep 1
-cp $PILOTS $MEDIA_AMOVIBLE
+cp "$PILOTS" "$MEDIA_AMOVIBLE"
 check_cmd ""
 echo -ne "${YELLOW}Accès au média amovible ($MEDIA_AMOVIBLE)..... ${NC}"
-sleep 1
 cd $MEDIA_AMOVIBLE
 check_cmd ""
 echo -ne "${YELLOW}Dézippage de $PILOTS dans $MEDIA_AMOVIBLE..... ${NC}"
-sleep 1
 unzip $PILOTS
 check_cmd "dézippage"
-echo -ne "${YELLOW}Démontage du système de fichier..... ${NC}"
-cd ../ && sudo umount "$MEDIA_AMOVIBLE"
-check_cmd "démontage propre de la clé usb"
+super_echo YELLOW "Permissions sur tous les fichiers de la clé..... " n
+chmod -R 777 *
+check_cmd ""
+
+super_echo PURPLE "Démontage de la clé usb"
+umount_usb "$cle"
+
+super_echo YELLOW "Éjection de $cle..... " n
+sudo eject "$cle" > /dev/null 2>&1
+check_cmd ""
+
 echo -ne "${YELLOW}Dernières vérifications..... ${NC}"
 check_cmd "tout, fin du script"
