@@ -70,13 +70,13 @@ sleep 3
 # Recherche d'un fichier $extension dans $repertoire (au moins 1)
 found=false
 for file in "$repertoire"/*; do
-	test -f "$file" && echo "$file" | grep -Eq "$extension\$" && found=true && break
+	test -f "$file" && grep -Eq "$extension\$" <<< "$file" && found=true && break
 done
 
 if [ "$found" = false ]; then
 	echo -e "${RED}Il n'y a aucun fichier $extension dans $repertoire.${NC}"
 	echo -e "${RED}--------------- Arrêt du script ---------------${NC}"
-    sleep 2
+	sleep 2
 	exit 3
 fi
 ma="$repertoire/Makefile"
@@ -95,6 +95,7 @@ echo "CC = gcc" >> "$ma"
 
 flags=""
 for flag in "${ALL_FLAGS[@]}"; do flags+="$flag "; done
+
 echo "CFLAGS = $flags" >> "$ma"
 saut_de_ligne "$ma"
 echo "SRCS = \$(wildcard *.c)" >> "$ma"
@@ -112,8 +113,8 @@ for file in "${repertoire}"/*${extension}; do
 		if grep -q math.h < "$file"; then
 			lm="-lm"
 		fi
-        filename=$(basename "$file" | cut -d. -f1)
-        all_files="$all_files $filename"
+		filename=$(basename "$file" | cut -d. -f1)
+		all_files="$all_files $filename"
 		all_rules="${all_rules}${filename}: ${filename}.o\n\t\$(CC) -o \$@ \$^ ${lm}\n\n"
     fi
 done

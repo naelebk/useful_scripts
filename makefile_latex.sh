@@ -70,7 +70,7 @@ sleep 3
 # Recherche d'un fichier $extension dans $repertoire (au moins 1)
 found=false
 for file in "$repertoire"/*; do
-	test -f "$file" && echo "$file" | grep -Eq "$extension\$" && found=true && break
+	test -f "$file" && grep -Eq "$extension\$" <<< "$file" && found=true && break
 done
 
 if [ "$found" = false ]; then
