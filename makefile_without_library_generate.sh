@@ -19,7 +19,7 @@ NC='\033[0m'
 # -I. : ajoute le répertoire courant dans les chemins de recherche des fichiers d'en-tête (headers).
 # -O2 : optimise le programme pour de meilleures performances sans sacrifier le temps de compilation.
 # -g : génère des informations de débogage pour faciliter le suivi des erreurs avec un débogueur.
-ALL_FLAGS=("-Wall" "-pthread" "-Wextra" "-std=c99" "-pedantic" "-I." "-O2" "-g")
+ALL_FLAGS=("-Wall" "-pthread" "-Wextra" "-std=c99" "-pedantic" "-I." "-O3" "-march=native" "-mtune=native" "-g")
 
 # On garde l'extension dans une constante, car makefile peut servir pour d'autres scripts !
 extension=".c"
