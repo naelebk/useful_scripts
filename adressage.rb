@@ -168,81 +168,88 @@ end
 '''
 Cette fonction effectue un adressage complet FLSM (Fix Length Subnet Mask)
 en fonction d"une adresse réseau (ou d"une adresse IP quelconque qui sera convertit
-en adresse réseau, ou en un tableau d"adresses IP), du masque correspondant et du nombre de sous réseau voulu.
+en adresse réseau, ou en un tableau d"adresses IP) et du masque correspondant => le tout
+rangé dans le tableau networks. Également, le nombre de sous réseau voulu.
 
 En fonction de la valeur de print, renvoie nil et affiche l"adressage correspondant
 ou n"affiche pas l"adressage et renvoie le dictionnaire qui contient l"adressage complet
 '''
-def FLSM(network, mask, num_subnets, print=true)
-    if network.is_a?(Array)
-        tab = []
-        network.each do |subnetwork|
-            res = FLSM(subnetwork, mask, num_subnets, print)
-            tab.concat(res) unless res.nil?
+def FLSM(networks, num_subnets, print=true)
+    tab = []
+    networks.each do |mask, network|
+        if network.is_a?(Array)
+            network.each do |subnetwork|
+                res = FLSM({mask => subnetwork}, num_subnets, print)
+                tab.concat(res) unless res.nil?
+            end
+        else
+            network = network_address(network, mask)
+            base_ip = IPAddr.new("#{network}/#{mask}")
+            original_prefix_length = base_ip.prefix
+            new_prefix_length = original_prefix_length + Math.log2(num_subnets).ceil
+            puts "Nouveau masque : #{YELLOW}2^(32 - #{mask})/#{num_subnets}" +
+            " = 2^(#{32 - mask})/#{num_subnets} = #{GREEN}#{mask_to_octets(new_prefix_length)} #{PINK}(/#{new_prefix_length})#{NC}"
+            if hosts_by_subnet(new_prefix_length) < 1
+                puts "#{RED}Erreur, il doit y avoir au moins un hôte par sous-réseau.#{NC}"
+                return nil
+            end
+            subnet_size = length_subnet_by_mask(new_prefix_length)
+            puts "Taille de chaque sous-réseau : #{YELLOW}2^(32 - #{new_prefix_length}) = #{GREEN}2^(#{32 - new_prefix_length}) = #{PINK}#{subnet_size}#{NC}"
+            subnets = adressage(base_ip, num_subnets, subnet_size, new_prefix_length)
+            if print
+                print_subnet_table(subnets)
+            else
+                tab.concat(subnets)
+            end
         end
-        return print ? nil : tab
     end
-    network = network_address(network, mask)
-    base_ip = IPAddr.new("#{network}/#{mask}")
-    original_prefix_length = base_ip.prefix
-    new_prefix_length = original_prefix_length + Math.log2(num_subnets).ceil
-    puts "Nouveau masque : #{YELLOW}2^(32 - #{mask})/#{num_subnets}" +
-    " = 2^(#{32 - mask})/#{num_subnets} = #{GREEN}#{mask_to_octets(new_prefix_length)} #{PINK}(/#{new_prefix_length})#{NC}"
-    if hosts_by_subnet(new_prefix_length) < 1
-        puts "#{RED}Erreur, il doit y avoir au moins un hôte par sous-réseau.#{NC}"
-        return nil
-    end
-    subnet_size = length_subnet_by_mask(new_prefix_length)
-    puts "Taille de chaque sous-réseau : #{YELLOW}2^(32 - #{new_prefix_length}) = #{GREEN}2^(#{32 - new_prefix_length}) = #{PINK}#{subnet_size}#{NC}"
-    subnets = adressage(base_ip, num_subnets, subnet_size, new_prefix_length)
-    if print
-        print_subnet_table(subnets)
-        return nil
-    end
-    subnets
+    print ? nil : tab
 end
 
 '''
 Cette fonction effectue un adressage complet VLSM (Variable Length Subnet Mask)
 en fonction d"une adresse réseau (ou d"une adresse IP quelconque qui sera convertit
-en adresse réseau, ou en un tableau d"adresses IP), du masque correspondant et d"un tableau (subnets) contenant le nombre
-d"hôtes maximal par sous-réseau voulu.
-En fonction de ce dernier nombre, le tableau subnets sera physiquement trié (avec l"action
+en adresse réseau, ou en un tableau d"adresses IP) et du masque correspondant => le tout
+rangé dans le tableau networks. Également, un tableau subnets qui contiendra le nombre
+de d"hôtes voulu par sous-réseau. Le tableau subnets sera physiquement trié (avec l"action
 sort! ("bang")) et effectuera l"adressage dynamiquement
 
 En fonction de la valeur de print, renvoie nil et affiche l"adressage correspondant
 ou n"affiche pas l"adressage et renvoie le dictionnaire qui contient l"adressage complet
 '''
-def VLSM(network, mask, subnets, print=true)
-    if network.is_a?(Array)
-        tab = []
-        network.each do |subnetwork|
-            res = VLSM(subnetwork, mask, subnets, print)
-            tab.concat(res) unless res.nil?
+def VLSM(networks, subnets, print=true)
+    tab = []
+    networks.each do |mask, network|
+        if network.is_a?(Array)
+            network.each do |subnetwork|
+                res = VLSM({mask => subnetwork}, subnets, print)
+                tab.concat(res) unless res.nil?
+            end
+        else
+            base_ip = IPAddr.new("#{network}/#{mask}")
+            start_ip = base_ip.to_i
+            subnets.sort!
+            vlsm_subnets = []
+            subnets.reverse_each do |subnet|
+                needed_hosts = subnet + 2
+                new_prefix_length = 32 - Math.log2(needed_hosts).ceil
+                subnet_size = length_subnet_by_mask(new_prefix_length)
+                if needed_hosts > subnet_size
+                    puts "#{RED}Erreur: le sous-réseau requiert plus d'adresses que disponible.#{NC}"
+                    return nil
+                end
+                result = adressage(IPAddr.new(start_ip, Socket::AF_INET), 1, subnet_size, new_prefix_length)
+                start_ip += subnet_size
+                vlsm_subnets.concat(result)
+            end
+            if print
+                print_subnet_table(vlsm_subnets)
+            else
+                tab.concat(vlsm_subnets)
+            end
         end
-        return print ? nil : tab
     end
-    base_ip = IPAddr.new("#{network}/#{mask}")
-    start_ip = base_ip.to_i
-    subnets.sort!
-    vlsm_subnets = []
-    subnets.reverse_each do |subnet|
-        needed_hosts = subnet + 2
-        new_prefix_length = 32 - Math.log2(needed_hosts).ceil
-        subnet_size = length_subnet_by_mask(new_prefix_length)
-        if needed_hosts > subnet_size
-            puts "#{RED}Erreur: le sous-réseau requiert plus d'adresses que disponible.#{NC}"
-            return nil
-        end
-        result = adressage(IPAddr.new(start_ip, Socket::AF_INET), 1, subnet_size, new_prefix_length)
-        start_ip += subnet_size
-        vlsm_subnets.concat(result)
-    end
-    if print
-        print_subnet_table(vlsm_subnets)
-        return nil
-    end
-    vlsm_subnets
+    print ? nil : tab
 end
 
 '''
