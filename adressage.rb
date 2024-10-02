@@ -36,7 +36,7 @@ def bin(int)
 end
 
 '''
-Idem mais formaté sur 1 octet (à ne pas utiliser pour int > 255 sinon résultat tronqué)
+Idem mais formaté sur 1 octet (à ne pas utiliser pour int > 255, sinon résultat tronqué)
 '''
 def bin_8(int)
     format('%08b', int)
