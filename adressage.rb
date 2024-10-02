@@ -168,7 +168,7 @@ end
 '''
 Cette fonction effectue un adressage complet FLSM (Fix Length Subnet Mask)
 en fonction d"une adresse réseau (ou d"une adresse IP quelconque qui sera convertit
-en adresse réseau), du masque correspondant et du nombre de sous réseau voulu.
+en adresse réseau, ou en un tableau d"adresses IP), du masque correspondant et du nombre de sous réseau voulu.
 
 En fonction de la valeur de print, renvoie nil et affiche l"adressage correspondant
 ou n"affiche pas l"adressage et renvoie le dictionnaire qui contient l"adressage complet
@@ -205,7 +205,7 @@ end
 '''
 Cette fonction effectue un adressage complet VLSM (Variable Length Subnet Mask)
 en fonction d"une adresse réseau (ou d"une adresse IP quelconque qui sera convertit
-en adresse réseau), du masque correspondant et d"un tableau (subnets) contenant le nombre
+en adresse réseau, ou en un tableau d"adresses IP), du masque correspondant et d"un tableau (subnets) contenant le nombre
 d"hôtes maximal par sous-réseau voulu.
 En fonction de ce dernier nombre, le tableau subnets sera physiquement trié (avec l"action
 sort! ("bang")) et effectuera l"adressage dynamiquement
@@ -214,6 +214,14 @@ En fonction de la valeur de print, renvoie nil et affiche l"adressage correspond
 ou n"affiche pas l"adressage et renvoie le dictionnaire qui contient l"adressage complet
 '''
 def VLSM(network, mask, subnets, print=true)
+    if network.is_a?(Array)
+        tab = []
+        network.each do |subnetwork|
+            res = VLSM(subnetwork, mask, subnets, print)
+            tab.concat(res) unless res.nil?
+        end
+        return print ? nil : tab
+    end
     base_ip = IPAddr.new("#{network}/#{mask}")
     start_ip = base_ip.to_i
     subnets.sort!
