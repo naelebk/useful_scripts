@@ -74,6 +74,17 @@ def octets_to_mask(octets)
 end
 
 '''
+Cette fonction calcule le pas entre chaque sous-réseau en fonction d"un
+masque en octets
+'''
+def hop_by_octets(octets)
+    octets.split('.').map(&:to_i).each do |part|
+        return 256 - part if part < 255 && part != 0
+    end
+    1
+end
+
+'''
 Convertit une chaîne hexadécimale en une adresse IP (ou {net,host}_id si bien formaté)
 '''
 def hexa_to_ip(hex)
@@ -121,6 +132,19 @@ du masque fournit
 '''
 def hosts_by_subnet(mask)
     length_subnet_by_mask(mask) - 2
+end
+
+'''
+Idem mais effectue cette action dans le sens inverse
+'''
+def subnet_by_hosts(hosts)
+    return 32 if hosts <= 0
+    prefix = 32
+    while (2 ** (32 - prefix)) - 2 < hosts
+      prefix -= 1
+    end
+    mask = (0xFFFFFFFF << (32 - prefix)) & 0xFFFFFFFF
+    octets_to_mask([24, 16, 8, 0].map { |shift| (mask >> shift) & 255 }.join("."))
 end
 
 '''
@@ -187,14 +211,13 @@ def FLSM(networks, num_subnets, print=true)
             base_ip = IPAddr.new("#{network}/#{mask}")
             original_prefix_length = base_ip.prefix
             new_prefix_length = original_prefix_length + Math.log2(num_subnets).ceil
-            puts "Nouveau masque : #{YELLOW}2^(32 - #{mask})/#{num_subnets}" +
-            " = 2^(#{32 - mask})/#{num_subnets} = #{GREEN}#{mask_to_octets(new_prefix_length)} #{PINK}(/#{new_prefix_length})#{NC}"
+            puts "#{YELLOW}Nouveau masque : #{PINK}#{mask} + #{Math.log2(num_subnets).ceil} #{NC}= #{GREEN}#{new_prefix_length} (#{mask_to_octets(new_prefix_length)})"
             if hosts_by_subnet(new_prefix_length) < 1
                 puts "#{RED}Erreur, il doit y avoir au moins un hôte par sous-réseau.#{NC}"
                 return nil
             end
             subnet_size = length_subnet_by_mask(new_prefix_length)
-            puts "Taille de chaque sous-réseau : #{YELLOW}2^(32 - #{new_prefix_length}) = #{GREEN}2^(#{32 - new_prefix_length}) = #{PINK}#{subnet_size}#{NC}"
+            puts "#{YELLOW}Taille de chaque sous-réseau : #{PINK}2^(32 - #{new_prefix_length}) #{NC}= #{GREEN}2^(#{32 - new_prefix_length}) #{NC}= #{GREEN}#{subnet_size}#{NC}"
             subnets = adressage(base_ip, num_subnets, subnet_size, new_prefix_length)
             if print
                 print_subnet_table(subnets)
