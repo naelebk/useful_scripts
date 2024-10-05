@@ -30,15 +30,9 @@ NC     = "\e[0m"
 
 '''
 Convertit un entier en un nombre binaire
+Formaté sur 1 octet si int <= 255 (fonctionne aussi avec int >= 256 et int < 0)
 '''
 def bin(int)
-    int.to_s(2)
-end
-
-'''
-Idem mais formaté sur 1 octet (à ne pas utiliser pour int > 255, sinon résultat tronqué)
-'''
-def bin_8(int)
     format('%08b', int)
 end
 
