@@ -5,7 +5,7 @@ RED='\033[0;31m'
 NC='\033[0m'
 ID_ROOT=0
 ROOT=$(grep -E ":${ID_ROOT}:" /etc/passwd | cut -d: -f1)
-ME=$LOGNAME
+ME=$(who | grep ":0" | awk '{print $1}' | tr -s ' ')
 ID_ME=$(grep "$ME" < /etc/passwd | cut -d: -f3)
 
 check_cmd() {
@@ -22,6 +22,38 @@ check_cmd() {
             echo -e "${RED}ERREUR pour $1.${NC}"
             echo "$1" >> /home/"$ME"/error.log
         fi
+    fi
+}
+
+super_echo() {
+    local first_color=$1
+    local message=$2
+    local end=$3
+    case "$first_color" in
+        RED)
+            echo -ne "${RED}${message}${NC}"
+            ;;
+        PURPLE)
+            echo -ne "${PURPLE}${message}${NC}"
+            ;;
+        YELLOW)
+            echo -ne "${YELLOW}${message}${NC}"
+            ;;
+        GREEN)
+            echo -ne "${GREEN}${message}${NC}"
+            ;;
+        WHITE)
+            echo -n "${message}"
+            ;;
+        *)
+            echo "Couleur non supportée : $first_color"
+            return 1
+            ;;
+    esac
+    if [[ "$end" == "n" ]]; then
+        echo -n ""
+    else
+        echo ""
     fi
 }
 
@@ -44,15 +76,42 @@ is_number() {
 	return 1
 }
 
-install_app() {
-    local key="$2"
-    if ! command -v "$1" > /dev/null 2>&1; then
-        echo -ne "${YELLOW}Installation de $1..... ${NC}"
-        "$key" install -y "$1" > /dev/null 2>&1
-        check_cmd $1
+install_package() {
+    PACKAGE_NAME="$1"
+    super_echo YELLOW "Installation de $PACKAGE_NAME..... " n
+    if [ -f /etc/debian_version ]; then
+        sudo apt-get update > /dev/null 2>&1
+        sudo apt-get install -y "$PACKAGE_NAME" > /dev/null 2>&1
+    elif [ -f /etc/redhat-release ]; then
+        if command -v dnf >/dev/null 2>&1; then
+            sudo dnf install -y "$PACKAGE_NAME" > /dev/null 2>&1 
+        else
+            sudo yum install -y "$PACKAGE_NAME" > /dev/null 2>&1
+        fi
+    elif [ -f /etc/arch-release ]; then
+        sudo pacman -Sy --noconfirm "$PACKAGE_NAME" > /dev/null 2>&1
+    elif [ -f /etc/SuSE-release ]; then
+        sudo zypper install -y "$PACKAGE_NAME" > /dev/null 2>&1
+    elif [ -f /etc/gentoo-release ]; then
+        sudo emerge --ask=n "$PACKAGE_NAME" > /dev/null 2>&1
+    elif [ -f /etc/void-release ]; then
+        sudo xbps-install -Sy "$PACKAGE_NAME" > /dev/null 2>&1
+    elif [ -f /etc/slackware-version ]; then
+        sudo slackpkg install "$PACKAGE_NAME" > /dev/null 2>&1
     else
-        echo -e "${GREEN}OK pour $1 : déjà installé.${NC}"
+        super_echo "RED" "Distribution non supportée pour cette installation."
+        return 1
     fi
+    check_cmd "$PACKAGE_NAME"
+    return 0
+}
+
+install_all_apps_from_file() {
+    local file="$1"
+    test ! -f "$file" && (super_echo "RED" "Erreur ! Le fichier '$file' n'est pas un fichier régulier valide" && return 1)
+    while read -r app; do
+        install_package "$app"
+    done < "$file"
 }
 
 install_deb() {
@@ -61,11 +120,23 @@ install_deb() {
     check_cmd "$1"
 }
 
+install_rpm() {
+    echo -ne "${YELLOW}Installation de $1..... ${NC}"
+    rpm -ivh "$1" > /dev/null 2>&1
+    check_cmd "$1"
+}
+
+install_flatpak() {
+    echo -ne "${YELLOW}Installation de $1..... ${NC}"
+    flatpak install -y "$1" > /dev/null 2>&1
+    check_cmd "$1"
+}
+
 git_config() {
     local email="$1"
     local package_manager="$2"
-    install_app "git" "$package_manager"
-    install_app "xsel" "$package_manager"
+    install_package "git" "$package_manager"
+    install_package "xsel" "$package_manager"
     echo -ne "${YELLOW}Configuration de git avec $email.....${NC} "
     sudo -u "$ME" git config --global user.email "$email"
     check_cmd ""
