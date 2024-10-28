@@ -26,35 +26,16 @@ check_cmd() {
 }
 
 super_echo() {
-    local first_color=$1
-    local message=$2
-    local end=$3
-    case "$first_color" in
-        RED)
-            echo -ne "${RED}${message}${NC}"
-            ;;
-        PURPLE)
-            echo -ne "${PURPLE}${message}${NC}"
-            ;;
-        YELLOW)
-            echo -ne "${YELLOW}${message}${NC}"
-            ;;
-        GREEN)
-            echo -ne "${GREEN}${message}${NC}"
-            ;;
-        WHITE)
-            echo -n "${message}"
-            ;;
-        *)
-            echo "Couleur non supportée : $first_color"
-            return 1
-            ;;
-    esac
-    if [[ "$end" == "n" ]]; then
-        echo -n ""
-    else
-        echo ""
+    first_color=$1
+    message=$2
+    end=$3
+    eval "color=\${$first_color}"
+    if [ -z "$color" ]; then
+        echo "Couleur non supportée : $first_color"
+        return 1
     fi
+    echo -ne "${color}${message}${NC}"
+    [ "$end" != "n" ] && echo "" || echo -n ""
 }
 
 updateee() {
