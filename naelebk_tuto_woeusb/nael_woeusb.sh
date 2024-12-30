@@ -10,21 +10,27 @@ RED='\033[0;31m'
 NC='\033[0m'
 TYPE_ISO="ISO 9660"
 
+super_echo() {
+    local first_color="$1"
+    local message="$2"
+    local end="$3"
+    eval "color=\${$first_color}"
+    if [ -z "$color" ]; then
+        echo -e "${RED}Couleur non supportée : ${ORANGE}$first_color${NC}"
+        return 1
+    fi
+    echo -ne "${color}${message}${NC}"
+    [ "$end" != "n" ] && echo "" || echo -n ""
+}
+
 check_cmd() {
-    if [[ $? -eq 0 ]]; then
-        if [ -z "$1" ]; then 
-            echo -e "${GREEN}OK.${NC}"
-        else 
-            echo -e "${GREEN}OK pour $1.${NC}"
-        fi
+    if [ $? -eq 0 ]; then
+        super_echo "GREEN" "OK" n
+        [ $# -ne 1 ] && super_echo "GREEN" "." || super_echo "GREEN" " pour $1."
     else
-        if [[ -z "$1" ]]; then 
-            echo -e "${RED}ERREUR !${NC}"
-            exit 42
-        else
-            echo -e "${RED}ERREUR pour $1.${NC}"
-            exit 42
-        fi
+        super_echo "RED" "ERREUR " n
+        [ $# -ne 1 ] && super_echo "RED" "!" || super_echo "RED" "pour $1 !"
+        exit 1
     fi
 }
 
@@ -51,38 +57,6 @@ choice() {
 choice_string() {
     action "$1"
     eval "$2=\"$WWW\""
-}
-
-super_echo() {
-    local first_color=$1
-    local message=$2
-    local end=$3
-    case "$first_color" in
-        RED)
-            echo -ne "${RED}${message}${NC}"
-            ;;
-        PURPLE)
-            echo -ne "${PURPLE}${message}${NC}"
-            ;;
-        YELLOW)
-            echo -ne "${YELLOW}${message}${NC}"
-            ;;
-        GREEN)
-            echo -ne "${GREEN}${message}${NC}"
-            ;;
-        WHITE)
-            echo -n "${message}"
-            ;;
-        *)
-            echo "Couleur non supportée : $first_color"
-            return 1
-            ;;
-    esac
-    if [[ "$end" == "n" ]]; then
-        echo -n ""
-    else
-        echo ""
-    fi
 }
 
 is_file_type() {
@@ -171,12 +145,31 @@ install_bios_package() {
 }
 
 get_partitions() {
-    PARTITIONS=$(lsblk -lnpo NAME "$1" | grep -v "^$1$" | grep '[0-9]')
-    if [ -z "$PARTITIONS" ]; then
-        super_echo RED "Aucune partition trouvée sur $1."
+    local disk="$1"
+    local partitions=""
+    if [ -z "$disk" ]; then
+        super_echo "RED" "Aucun disque spécifié ! Terminaison."
         exit 15
     fi
-    echo "$PARTITIONS"
+    partitions=$(lsblk -lnpo NAME,TYPE,MOUNTPOINTS "$disk" 2>/dev/null | awk '
+        $2 == "part" && $3 !~ /(SWAP|\/boot\/u?efi|\/)/ {print $1}'
+    )
+    if [ -z "$partitions" ]; then
+        super_echo "RED" "Aucune partition valide détectée sur '$disk' ! Terminaison."
+        exit 15
+    fi
+    local valid_partitions=""
+    for part in $partitions; do
+        if file -s "$part" | grep -Eq "LUKS|data|symbolic link to"; then
+            valid_partitions="$valid_partitions $part"
+        fi
+    done
+    valid_partitions=$(echo "$valid_partitions" | sed -E 's/^\s+|\s+$//g')
+    if [ -z "$valid_partitions" ]; then
+        super_echo "RED" "Aucune partition valide détectée après vérification sur '$disk' ! Terminaison."
+        exit 15
+    fi
+    echo "$valid_partitions"
 }
 
 umount_usb() {
@@ -193,7 +186,7 @@ umount_usb() {
     PARTITIONS=$(get_partitions "$USB_DEVICE" | tr ' ' '\n' | tac | tr '\n' ' ')
     for PARTITION in $PARTITIONS; do
         super_echo YELLOW "Démontage de $PARTITION..... " n
-        grep -q "$PARTITION" /proc/mounts && sudo umount "$PARTITION" > /dev/null 2>&1
+        grep -qE "$PARTITION" /proc/mounts && sudo umount "$PARTITION" > /dev/null 2>&1
         check_cmd ""
     done
     return 0
@@ -204,12 +197,10 @@ mount_usb() {
     PARTITIONS=$(get_partitions "$USB_DEVICE")
     for PARTITION in $PARTITIONS; do
         super_echo YELLOW "Montage de $PARTITION..... " n
-        if ! grep -q "$PARTITION" /proc/mounts; then
+        if ! grep -qE "$PARTITION" /proc/mounts; then
             sudo mount "$PARTITION" /media/ > /dev/null 2>&1
-            check_cmd ""
-        else
-            super_echo GREEN "OK. Partition $PARTITION déjà montée."
         fi
+        check_cmd "$PARTITION"
     done
 }
 
