@@ -71,25 +71,25 @@ download_tuto() {
     local repository=$2
     super_echo YELLOW "Archive..... " n
     wget "https://github.com/naelebk/useful_scripts/archive/refs/heads/$my_file" > /dev/null 2>&1
-    check_cmd ""
+    check_cmd
     super_echo YELLOW "Dézippage..... " n
     unzip "$my_file" > /dev/null 2>&1
-    check_cmd ""
+    check_cmd
     super_echo YELLOW "Permissions..... " n
     chmod -R 755 *
-    check_cmd ""
+    check_cmd
     super_echo YELLOW "Suppresion du zip..... " n
     rm "$my_file" > /dev/null 2>&1
-    check_cmd ""
+    check_cmd
     super_echo YELLOW "Déplacement du tuto dans l'espace courant..... " n
     mv useful_scripts-main/$repository . > /dev/null 2>&1
-    check_cmd ""
+    check_cmd
     super_echo YELLOW "Suppression des répertoire inutiles..... " n
     rm -r useful_scripts-main > /dev/null 2>&1
-    check_cmd ""
+    check_cmd
     super_echo YELLOW "Accès au répertoire $repository..... " n
     cd $repository > /dev/null 2>&1
-    check_cmd "" 
+    check_cmd 
 }
 
 make_tuto() {
@@ -185,9 +185,11 @@ umount_usb() {
     # Inversement de l'ordre du démontage (car erreur sur système de fichier sinon...)
     PARTITIONS=$(get_partitions "$USB_DEVICE" | tr ' ' '\n' | tac | tr '\n' ' ')
     for PARTITION in $PARTITIONS; do
-        super_echo YELLOW "Démontage de $PARTITION..... " n
-        grep -qE "$PARTITION" /proc/mounts && sudo umount "$PARTITION" > /dev/null 2>&1
-        check_cmd ""
+        if grep -qE "$PARTITION" /proc/mounts; then
+            super_echo YELLOW "Démontage de $PARTITION..... " n
+            sudo umount "$PARTITION" > /dev/null 2>&1
+            check_cmd
+        fi
     done
     return 0
 }
@@ -222,12 +224,12 @@ fi
 if [[ -d "naelebk_tuto_woeusb" ]]; then
 	super_echo YELLOW "Suppression du répertoire naelebk_tuto_woeusb..... " n
 	rm -rf naelebk_tuto_woeusb
-	check_cmd ""
+	check_cmd
 fi
 if [[ -d "useful_scripts-main" ]]; then
     super_echo YELLOW "Suppression du répertoire useful_scripts-main..... " n
     rm -rf useful_scripts-main
-    check_cmd ""
+    check_cmd
 fi
 iso_file=""
 if [[ -n "$1" ]] && [[ "$#" -eq 1 ]]; then
@@ -272,8 +274,8 @@ download_tuto "main.zip" "naelebk_tuto_woeusb"
 
 super_echo PURPLE "Processus de la création de la clé usb lancé, cela peut prendre du temps, merci de patienter"
 make_tuto "$iso_file" "$cle"
-check_cmd ""
+check_cmd
 
 super_echo YELLOW "Terminaison du script, éjection de $cle..... " n
 sudo eject "$cle" > /dev/null 2>&1
-check_cmd ""
+check_cmd
