@@ -160,7 +160,7 @@ get_partitions() {
     fi
     local valid_partitions=""
     for part in $partitions; do
-        if file -s "$part" | grep -Eq "LUKS|data|symbolic link to"; then
+        if udevadm info --query=property --name=$(lsblk -no pkname "$part") | grep -q ID_BUS=usb; then
             valid_partitions="$valid_partitions $part"
         fi
     done
