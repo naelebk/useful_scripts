@@ -152,7 +152,7 @@ get_partitions() {
         exit 15
     fi
     partitions=$(lsblk -lnpo NAME,TYPE,MOUNTPOINTS "$disk" 2>/dev/null | awk '
-        $2 == "part" && $3 !~ /(SWAP|\/boot\/u?efi|\/)/ {print $1}'
+        $2 == "part" && $3 !~ /(SWAP$|\/boot\/u?efi$|\/$)/ {print $1}'
     )
     if [ -z "$partitions" ]; then
         super_echo "RED" "Aucune partition valide détectée sur '$disk' ! Terminaison."
@@ -160,7 +160,8 @@ get_partitions() {
     fi
     local valid_partitions=""
     for part in $partitions; do
-        if udevadm info --query=property --name=$(lsblk -no pkname "$part") | grep -q ID_BUS=usb; then
+        parent_device=$(lsblk -no pkname "$part")
+        if udevadm info --query=property --name="$parent_device" | grep -q USB; then
             valid_partitions="$valid_partitions $part"
         fi
     done
