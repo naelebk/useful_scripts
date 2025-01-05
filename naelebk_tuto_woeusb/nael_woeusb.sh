@@ -186,8 +186,9 @@ umount_usb() {
     PARTITIONS=$(get_partitions "$USB_DEVICE" | tr ' ' '\n' | tac | tr '\n' ' ')
     for PARTITION in $PARTITIONS; do
         if grep -qE "$PARTITION" /proc/mounts; then
-            super_echo YELLOW "Démontage de $PARTITION..... " n
-            sudo umount "$PARTITION" > /dev/null 2>&1
+            MOUNT_POINT=$(grep "$PARTITION" /proc/mounts | awk '{print $2}')
+            super_echo YELLOW "Démontage de $PARTITION monté sur $MOUNT_POINT..... " n
+            sudo umount "$MOUNT_POINT" > /dev/null 2>&1
             check_cmd
         fi
     done
