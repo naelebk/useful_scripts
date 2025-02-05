@@ -13,7 +13,7 @@ TYPE_ISO="ISO 9660"
 # La version est automatiquement mis à jour en fonction des nouvelles versions de ventoy
 # Comment est-elle mise à jour : script shell cherchant automatiquement la version, et 
 # modifie le présent script avec la nouvelle version
-VERSION=""
+VERSION="1.1.00"
 REP="ventoy-$VERSION"
 ISO="*.iso"
 PILOTS="PILOTS.zip"
