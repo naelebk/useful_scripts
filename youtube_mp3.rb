@@ -51,6 +51,7 @@ begin
     sources.each do |source|
       type = source.attribute('type') || ''
       src = source.attribute('src') || ''
+      #puts "Source : #{source.attribute('type')} ;  #{sources.attribute('src')}"
       if type.start_with?('video/') && src.end_with?('.mp4') || src.include?('itag=18')
         video_url = src
         break
